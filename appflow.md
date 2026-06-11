@@ -149,6 +149,13 @@ Each counting stage page (`/count/[date]/back`, `/front`, `/expired`, `/closing`
 - **Always show full-pack reference**: each item card has a compact `.ref` line showing the admin-configured reference values used in its calc — "Per bag N · Per box N" for pcs items, "Full N · Container N" for weight items (whipping cream, oat milk).
 - **Self-check line per card**: each card keeps one compact `.check` line showing the arithmetic that produces its total (e.g. "600 + 600 = 1200 pcs", "1020 − 20 − 150 = 850 g"), recalculated live — this replaced the earlier verbose multi-line check format.
 
+## A.6.5 Step-by-step row calc (NEW)
+
+- **Back/Front rows** now show the full per-row formula inline as `count × factor = sum`, e.g. "Bags [2] × /bag [300] = Sum [600]" and "Boxes [1] × /box [600] = Sum [600]". The `factor` is a read-only `.const` value sourced from the item's admin record (`per_bag_pcs` / `per_box_pcs`). The card-level `.ref` line was dropped from Back/Front since the factor is now visible directly in each row.
+- **Closing rows**: the existing `rows × lines + loose = loose total` row is unchanged. The Ctn row now also shows `boxes × /box = sum` using a **separate** admin field `closing_per_box_pcs` (e.g. Coffee Beans 8, Matcha 10) — distinct from the Back/Front `per_box_pcs` (600/800), because Closing's storage-box pcs differs from the Back/Front delivery-box pcs.
+- **Material Expired rows** already followed this pattern (`total − syrup − tare = cream`, `opened + add = loss total`) and are unchanged.
+- Each card's bottom `.check` line remains as the final roll-up (`row sum + row sum = total`).
+
 ## A.6.4 Admin item editor (NEW)
 
 - The Admin overlay's "Items" section is now a real editable list of all items (not just a link). Each item shows: name, category, and editable numeric fields:
@@ -225,6 +232,7 @@ Each stage shows:
   appears_in: [Stage],        // which stages this item appears in
   per_bag_pcs: number | null, // null if "-" (whole unit)
   per_box_pcs: number | null,
+  closing_per_box_pcs: number | null, // (NEW) Closing-stage storage-box pcs, may differ from per_box_pcs
   bag_size_g: number | null,  // for powder/liquid closing conversion
   loss_formula: "multiply" | "subtract" | "add" | "none",
   loss_rate: number | null,
@@ -433,3 +441,4 @@ Admin reviews Sheet2
 | 2026-06-12 | Added §A.6.3 (removed per-page titles, date moved to topbar, sticky topbar, "minimize parentheses" style rule, removed footer descriptions and inline check lines) and §A.6.4 (Admin "Items" section is now an editable list with Full pack g / Container g / per-bag/box pcs / pump fields). Updated `mockups/dark_theme.html` to match | Claude |
 | 2026-06-12 | Refined §A.6.3: date removed entirely from UI (record date = file/record name only, not displayed); each item card now shows unit consistently in its subtitle (pcs/g), a `.ref` line with the full-pack/container reference values used in the calc, and one compact self-check arithmetic line. Back stage cards split into separate Loose and Ctn rows. Updated `mockups/dark_theme.html` to match | Claude |
 | 2026-06-12 | Final (Sheet2) result table now shows a per-item self-check line (Back + Front + Closing = Total) plus a grand-total check line, matching the per-card check convention from §A.6.3 | Claude |
+| 2026-06-12 | Added §A.6.5: Back/Front rows show inline `count × factor = sum` step-by-step calc; Closing Ctn row shows `boxes × /box = sum` using new `closing_per_box_pcs` field (added to Item data model, §A.4 admin item editor). Updated `mockups/dark_theme.html` and admin item list accordingly | Claude |

@@ -143,6 +143,19 @@
     margin-top: -2px;
   }
 
+  .const {
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--field-auto-bg);
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+  }
+
   .canister-block { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--border); }
   .canister-block:last-of-type { border-bottom: none; }
 
@@ -324,18 +337,21 @@
           <div><div class="title">Coffee Beans</div><div class="subtitle">Raw Material · pcs</div></div>
           <div class="total">1200 pcs</div>
         </div>
-        <div class="ref">Per bag 300 · Per box 600</div>
         <div class="row">
           <div class="w105"><div class="name">Loose</div></div>
-          <div class="field w70"><div class="lbl">Open bags</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
-          <div class="op">→</div>
-          <div class="field w70"><div class="lbl">Bag sum</div><input class="auto" disabled value="600" /></div>
+          <div class="field w44"><div class="lbl">Bags</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/bag</div><div class="const">300</div></div>
+          <div class="op">=</div>
+          <div class="field w70"><div class="lbl">Sum</div><input class="auto" disabled value="600" /></div>
         </div>
         <div class="row">
           <div class="w105"><div class="name">Ctn</div></div>
-          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
-          <div class="op">→</div>
-          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="600" /></div>
+          <div class="field w44"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/box</div><div class="const">600</div></div>
+          <div class="op">=</div>
+          <div class="field w70"><div class="lbl">Sum</div><input class="auto" disabled value="600" /></div>
         </div>
         <div class="check">600 + 600 = 1200 pcs</div>
       </div>
@@ -345,18 +361,21 @@
           <div><div class="title">Matcha Powder</div><div class="subtitle">Syrup · pcs</div></div>
           <div class="total">1000 pcs</div>
         </div>
-        <div class="ref">Per bag 200 · Per box 800</div>
         <div class="row">
           <div class="w105"><div class="name">Loose</div></div>
-          <div class="field w70"><div class="lbl">Open bags</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
-          <div class="op">→</div>
-          <div class="field w70"><div class="lbl">Bag sum</div><input class="auto" disabled value="200" /></div>
+          <div class="field w44"><div class="lbl">Bags</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/bag</div><div class="const">200</div></div>
+          <div class="op">=</div>
+          <div class="field w70"><div class="lbl">Sum</div><input class="auto" disabled value="200" /></div>
         </div>
         <div class="row">
           <div class="w105"><div class="name">Ctn</div></div>
-          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
-          <div class="op">→</div>
-          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="800" /></div>
+          <div class="field w44"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/box</div><div class="const">800</div></div>
+          <div class="op">=</div>
+          <div class="field w70"><div class="lbl">Sum</div><input class="auto" disabled value="800" /></div>
         </div>
         <div class="check">200 + 800 = 1000 pcs</div>
       </div>
@@ -369,12 +388,13 @@
           <div><div class="title">Coffee Beans</div><div class="subtitle">Raw Material · pcs</div></div>
           <div class="total">1200 pcs</div>
         </div>
-        <div class="ref">Per box 600</div>
         <div class="row">
           <div class="w105"><div class="name">Ctn</div></div>
-          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
-          <div class="op">→</div>
-          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="1200" /></div>
+          <div class="field w44"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/box</div><div class="const">600</div></div>
+          <div class="op">=</div>
+          <div class="field w70"><div class="lbl">Sum</div><input class="auto" disabled value="1200" /></div>
         </div>
         <div class="check">2 × 600 = 1200 pcs</div>
       </div>
@@ -384,12 +404,13 @@
           <div><div class="title">Matcha Powder</div><div class="subtitle">Syrup · pcs</div></div>
           <div class="total">800 pcs</div>
         </div>
-        <div class="ref">Per box 800</div>
         <div class="row">
           <div class="w105"><div class="name">Ctn</div></div>
-          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
-          <div class="op">→</div>
-          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="800" /></div>
+          <div class="field w44"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/box</div><div class="const">800</div></div>
+          <div class="op">=</div>
+          <div class="field w70"><div class="lbl">Sum</div><input class="auto" disabled value="800" /></div>
         </div>
         <div class="check">1 × 800 = 800 pcs</div>
       </div>
@@ -477,9 +498,11 @@
         </div>
         <div class="row">
           <div class="w105"><div class="name">Ctn</div></div>
-          <div class="field w60"><div class="lbl">Box count</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="field w44"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/box</div><div class="const">8</div></div>
           <div class="op">=</div>
-          <div class="field w60"><div class="lbl">Box sum</div><input class="auto" disabled value="16" /></div>
+          <div class="field w60"><div class="lbl">Sum</div><input class="auto" disabled value="16" /></div>
         </div>
         <div class="check">48 + 16 = 64 pcs</div>
       </div>
@@ -502,9 +525,11 @@
         </div>
         <div class="row">
           <div class="w105"><div class="name">Ctn</div></div>
-          <div class="field w60"><div class="lbl">Box count</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="0" /></div>
+          <div class="field w44"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="0" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">/box</div><div class="const">10</div></div>
           <div class="op">=</div>
-          <div class="field w60"><div class="lbl">Box sum</div><input class="auto" disabled value="0" /></div>
+          <div class="field w60"><div class="lbl">Sum</div><input class="auto" disabled value="0" /></div>
         </div>
         <div class="check">42 + 0 = 42 pcs</div>
       </div>
@@ -555,6 +580,7 @@
         <div class="field w80"><div class="lbl">Container g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="60" /></div>
         <div class="field w70"><div class="lbl">Per bag</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="300" /></div>
         <div class="field w70"><div class="lbl">Per box</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="600" /></div>
+        <div class="field w70"><div class="lbl">Closing /box</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="8" /></div>
       </div>
     </div>
 
@@ -566,6 +592,7 @@
         <div class="field w80"><div class="lbl">Container g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="40" /></div>
         <div class="field w70"><div class="lbl">Per bag</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="200" /></div>
         <div class="field w70"><div class="lbl">Per box</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="800" /></div>
+        <div class="field w70"><div class="lbl">Closing /box</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="10" /></div>
       </div>
     </div>
 
