@@ -154,16 +154,12 @@ Each counting stage page (`/count/[date]/back`, `/front`, `/expired`, `/closing`
 - **Back/Front rows** now show the full per-row formula inline as `count × factor = sum`, e.g. "Bags [2] × /bag [300] = Sum [600]" and "Boxes [1] × /box [600] = Sum [600]". The `factor` is a read-only `.const` value sourced from the item's admin record (`per_bag_pcs` / `per_box_pcs`). The card-level `.ref` line was dropped from Back/Front since the factor is now visible directly in each row.
 - **Closing rows**: the existing `rows × lines + loose = loose total` row is unchanged. The Ctn row now also shows `boxes × /box = sum` using a **separate** admin field `closing_per_box_pcs` (e.g. Coffee Beans 8, Matcha 10) — distinct from the Back/Front `per_box_pcs` (600/800), because Closing's storage-box pcs differs from the Back/Front delivery-box pcs.
 - **Material Expired rows** already followed this pattern (`total − syrup − tare = cream`, `opened + add = loss total`) and are unchanged.
-- Each card's bottom `.check` line remains as the final roll-up (`row sum + row sum = total`).
+- Each card's bottom `.check` line remains as the final roll-up (`row sum + row sum = total`) on Back/Front/Material Expired/Closing. The Final tab does **not** show per-item or grand-total check lines — the result table itself is the final output, with no extra calc description below it.
 
-## A.6.4 Admin item editor (NEW)
+## A.6.4 Admin overlay scope (REVISED)
 
-- The Admin overlay's "Items" section is now a real editable list of all items (not just a link). Each item shows: name, category, and editable numeric fields:
-  - **Full pack (g)** — weight of a full container/bag/canister (generalizes `bag_size_g` beyond solid beverages).
-  - **Container (g)** — empty container/tare weight (generalizes `empty_canister_weight` to all items, e.g. bag tare for powders, canister tare for whipping cream).
-  - Plus category-specific fields where relevant: `per_bag_pcs` / `per_box_pcs` for solid items counted in pcs; `pump_count` / `ml_per_pump` for whipping cream variants.
-- All admin item fields use the same numeric-keyboard + autosave behavior as counting inputs.
-- "Records", "Approvals", "Settings" remain as simple link rows below the item list.
+- The Admin overlay does **not** show per-item details or calc factors (full pack/container weights, per-bag/per-box pcs, pump settings, etc.) — that editing surface was removed as out of scope for the mobile counting app's admin overlay.
+- Admin overlay is a simple list of links: "Final results", "Records", "Approvals", "Settings". Item-level configuration (the data referenced by §A.6.5's `.const` factors) is managed elsewhere (e.g. a separate `/admin/items` desktop screen per §B routes), not in this overlay.
 
 ## A.7 Working agreement
 
@@ -442,3 +438,4 @@ Admin reviews Sheet2
 | 2026-06-12 | Refined §A.6.3: date removed entirely from UI (record date = file/record name only, not displayed); each item card now shows unit consistently in its subtitle (pcs/g), a `.ref` line with the full-pack/container reference values used in the calc, and one compact self-check arithmetic line. Back stage cards split into separate Loose and Ctn rows. Updated `mockups/dark_theme.html` to match | Claude |
 | 2026-06-12 | Final (Sheet2) result table now shows a per-item self-check line (Back + Front + Closing = Total) plus a grand-total check line, matching the per-card check convention from §A.6.3 | Claude |
 | 2026-06-12 | Added §A.6.5: Back/Front rows show inline `count × factor = sum` step-by-step calc; Closing Ctn row shows `boxes × /box = sum` using new `closing_per_box_pcs` field (added to Item data model, §A.4 admin item editor). Updated `mockups/dark_theme.html` and admin item list accordingly | Claude |
+| 2026-06-12 | Reverted §A.6.4: removed the per-item editable list/calc factors from the Admin overlay (out of scope for this overlay); Admin is now just links (Final results, Records, Approvals, Settings). Removed the per-item/grand-total `.check` lines below the Final result table per §A.6.5 — Final tab shows the result table only, no calc description | Claude |
