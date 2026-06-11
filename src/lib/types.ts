@@ -11,6 +11,8 @@ export interface Item {
   sort_order: number;
   appears_in: Stage[];       // which stages this item appears in
 
+  unit: string | null; // display unit, e.g. "pcs", "bag", "bottle", "box", "pack", "can", "g"
+
   per_bag_pcs: number | null; // null ("-") => whole-unit item
   per_box_pcs: number | null;
 

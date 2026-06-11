@@ -193,7 +193,7 @@ Full control over the app structure and data.
 Guided input flow through all 4 active counting stages. Read-only access to Sheet2.
 
 **Capabilities:**
-- Input counts for Back, Front, Material Expired (Loss + Inventory), Closing
+- Input counts for Back, Front, Material Expired (Loss only), Closing (incl. inventory items, §A.7)
 - Weight inputs for powder/liquid items come from physical scale reading
 - View auto-calculated results and Sheet2 preview
 - Submit for final approval (triggers admin review)
@@ -204,10 +204,12 @@ Guided input flow through all 4 active counting stages. Read-only access to Shee
 ```
 Stage 1: Back         → input: open_bags, box_count
 Stage 2: Front        → input: box_count
-Stage 3: Material     → 
-  3A: Loss            → input: container_volume (ml/g) for each thrown premix
-  3B: Inventory       → input: remaining_weight per container (under_cabinet, non_coffee)
+Stage 3: Material     → Loss ONLY (REVISED, countingflow.md §A.6/§A.8)
+                        input: gross_weight (ml/g) + container selection (preset tare,
+                        auto-subtracted) for each thrown premix
 Stage 4: Closing      → input: loose_weight_or_count, box_count  [all fields nullable with warning]
+                        + for the 13 inventory items (countingflow.md §A.7): under_cabinet,
+                        non_coffee inputs inline on the card, feeding loose = bag_size − ...
 Stage 5: Sheet2       → auto-calculated only, read-only display
 ```
 
@@ -226,13 +228,36 @@ Each stage shows:
   name: string,               // e.g. "Matcha Flavoured (bag)"
   category: string,           // e.g. "Solid Beverage"
   appears_in: [Stage],        // which stages this item appears in
+  unit: string | null,        // display unit, e.g. "pcs", "bag", "bottle", "box", "pack", "can", "g"
   per_bag_pcs: number | null, // null if "-" (whole unit)
   per_box_pcs: number | null,
   closing_per_box_pcs: number | null, // (NEW) Closing-stage storage-box pcs, may differ from per_box_pcs
   bag_size_g: number | null,  // for powder/liquid closing conversion
   loss_formula: "multiply" | "subtract" | "add" | "none",
   loss_rate: number | null,
+
+  // (NEW, countingflow.md §A.6) Material Expired container-tare selector — only set
+  // for Loss items that have a container preset. null/empty => no container subtraction.
+  default_container_id: string | null, // e.g. "jug" — preselected, staff can change
+
+  // (NEW, countingflow.md §A.7) Closing inventory calc — only set for the 13 items
+  // whose "loose" is now derived in Closing instead of entered directly.
+  closing_inventory_formula: "non_coffee" | "under_cabinet" | "whipping_cream" | null,
+  // "non_coffee":     loose = bag_size_g − non_coffee
+  // "under_cabinet":  loose = bag_size_g − under_cabinet            (coffee beans)
+  // "whipping_cream": loose = bag_size_g − canister(Cream loss) − non_coffee − cherry(50)
+
   notes: string
+}
+```
+
+### Container (NEW, countingflow.md §A.6)
+```
+{
+  id: string,    // "pitcher" | "jug" | "powder_container" | "squeezer" | "canister" | "small_pitcher" | "coffee_tupperware"
+  name: string,  // display name
+  tare_g: number // e.g. pitcher=286, jug=281.5, powder container=191, squeezer=31.5,
+                 // canister=694, small pitcher=138, coffee tupperware=268
 }
 ```
 
@@ -243,9 +268,11 @@ Each stage shows:
   status: "draft" | "pending_approval" | "approved",
   back: { [item_id]: { open_bags, bag_sum, box_count, box_sum, total } },
   front: { [item_id]: { box_count, total } },
-  material_loss: { [item_id]: { total_volume, rate_value, result } },
-  material_inventory: { [item_id]: { under_cabinet, non_coffee, result } },
-  closing: { [item_id]: { loose, loose_sum, box_count, box_sum, total } },
+  material_loss: { [item_id]: { container_id, gross_weight, total_volume, rate_value, result } },
+  // total_volume = gross_weight − container.tare_g (or = gross_weight if no container)
+  closing: { [item_id]: { under_cabinet, non_coffee, loose, loose_sum, box_count, box_sum, total } },
+  // under_cabinet/non_coffee only used when item.closing_inventory_formula is set (§A.7);
+  // otherwise loose is entered directly as before
   sheet2: { [item_id]: { back, front, closing, total } },  // computed
   approved_by: string | null,
   approved_at: timestamp | null,
@@ -253,7 +280,7 @@ Each stage shows:
 }
 ```
 
-> See §A.4 and §A.5 for new fields (whipping cream variants, row×line+loose) layered on top of this model.
+> `material_inventory` (former Material Expired §3B) is REMOVED — merged into `closing` per §A.7. See §A.4 and §A.5 for other new fields (whipping cream variants, row×line+loose) layered on top of this model.
 
 ## B.4 Calculation Rules (Frontend Logic)
 
@@ -269,18 +296,24 @@ total    = (open_sum ?? 0) + (box_sum ?? 0)
 total = box_count × per_box_pcs
 ```
 
-### Material Expired — Loss
+### Material Expired — Loss (REVISED, container-tare selector)
 ```
+total_volume = gross_weight − (container.tare_g ?? 0)   // container = Container looked up by container_id
+
 if loss_formula == "multiply":  result = total_volume × loss_rate
 if loss_formula == "subtract":  result = total_volume − rate_value        // Cream
 if loss_formula == "add":       result = total_volume + addend_item_result  // Milk
 if loss_formula == "none":      result = null (warn: measurement not captured)
 ```
 
-### Material Expired — Inventory
+### Closing — Inventory items (NEW, countingflow.md §A.7)
+
+For items with `closing_inventory_formula` set, `loose` is derived (not entered directly):
 ```
-result = bag_size_g − (under_cabinet ?? 0) − (non_coffee ?? 0)
-// For Cream: bag_size_g − canister_from_loss − non_coffee
+if closing_inventory_formula == "non_coffee":     loose = bag_size_g − (non_coffee ?? 0)
+if closing_inventory_formula == "under_cabinet":  loose = bag_size_g − (under_cabinet ?? 0)
+if closing_inventory_formula == "whipping_cream": loose = bag_size_g − cream_canister_result − (non_coffee ?? 0) − 50
+  // cream_canister_result = material_loss["cream"].result (Cream's "subtract" Loss result)
 ```
 
 ### Closing
@@ -302,13 +335,15 @@ total   = (loose_sum ?? 0) + (box_sum ?? 0)
 ```
 total = (back ?? 0) + (front ?? 0) + (closing ?? 0)
 ```
+Display: round to 1 decimal place in the Final result table (back/front/closing/total
+columns) — full precision is retained internally, only the displayed value is rounded.
 
 ## B.5 Validation Rules
 
 | Rule | Trigger | Severity |
 |------|---------|----------|
 | Closing field left blank | Any Closing field = null on submit | Warning (not block) |
-| Pandan container not measured | Loss result = null for Pandan | Warning (highlight red) |
+| Pandan container not measured | Material Expired Loss result = null for Pandan | Warning (highlight red), also flagged on Pandan's Closing card (§A.7) |
 | box_sum ≠ box × per_box_pcs | Auto-check on input | Warning inline |
 | Sheet2 Total < 0 | Any total turns negative | Error (block submit) |
 | Duplicate date record | Attempting to create record for existing date | Error (block) |
@@ -439,3 +474,6 @@ Admin reviews Sheet2
 | 2026-06-12 | Final (Sheet2) result table now shows a per-item self-check line (Back + Front + Closing = Total) plus a grand-total check line, matching the per-card check convention from §A.6.3 | Claude |
 | 2026-06-12 | Added §A.6.5: Back/Front rows show inline `count × factor = sum` step-by-step calc; Closing Ctn row shows `boxes × /box = sum` using new `closing_per_box_pcs` field (added to Item data model, §A.4 admin item editor). Updated `mockups/dark_theme.html` and admin item list accordingly | Claude |
 | 2026-06-12 | Reverted §A.6.4: removed the per-item editable list/calc factors from the Admin overlay (out of scope for this overlay); Admin is now just links (Final results, Records, Approvals, Settings). Removed the per-item/grand-total `.check` lines below the Final result table per §A.6.5 — Final tab shows the result table only, no calc description | Claude |
+| 2026-06-12 | Added `unit: string | null` field to Item data model (§B.3, types.ts) and set it on all 22 items in `seedItems.ts` per the user's master unit list (e.g. matcha=bag, ceylon_black_tea=g, whipping_cream=box, uht_milk=pack); items with no match in the list (chocolate, cream/milk cheese-premix rows, milk, cream, pineapple_syrup) left as `unit: null` | Claude |
+| 2026-06-12 | Re-derived flow from `Counting (2).xlsx` (countingflow.md §A.6–A.8): Material Expired is now Loss-only with a container-tare selector (new `Container` type, `default_container_id` on Item, `material_loss.container_id`/`gross_weight` on DailyRecord); the former Material Expired Inventory section is merged into Closing via new `closing_inventory_formula` on Item and `under_cabinet`/`non_coffee` fields on `closing` entries; `material_inventory` removed from DailyRecord. Updated §B.2 stage architecture and §B.4 calculation rules accordingly. (Code/seedItems/mockup updates deferred to a follow-up pass) | Claude |
+| 2026-06-12 | Removed "Souflle Syrup" from §A.8 item list (not part of this app's item set; Pineapple Syrup remains absent per `Counting (2).xlsx`) — Back is now 50 items, Closing 51 (Back + Whipping Cream). Added Sheet2/Final display rule: round to 1 decimal place for display only, full precision retained internally (§B.4) | Claude |
