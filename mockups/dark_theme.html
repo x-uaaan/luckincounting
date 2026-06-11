@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Luckin Counting — Dark Theme Mockup</title>
+<style>
+  :root {
+    --page-bg: #0F1115;
+    --card-bg: #1A1D24;
+    --border: #2A2E37;
+    --text-primary: #F3F4F6;
+    --text-secondary: #9CA3AF;
+    --field-bg: #14161B;
+    --field-auto-bg: #23262E;
+    --accent: #60A5FA;
+    --accent-strong: #93C5FD;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "Segoe UI", Inter, sans-serif;
+    background: #050608;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .phone {
+    width: 375px;
+    max-width: 100%;
+    background: var(--page-bg);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 760px;
+    position: relative;
+  }
+
+  /* ===== Top bar: tabs + admin (always visible) ===== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--page-bg);
+    flex: none;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: none;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: rgba(96,165,250,0.15);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+  }
+  .admin-btn {
+    flex: none;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  /* ===== Page content ===== */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .panel { display: none; flex-direction: column; gap: 10px; }
+  .panel.active { display: flex; }
+
+  .summary {
+    background: rgba(96,165,250,0.10);
+    border: 1px solid rgba(96,165,250,0.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .summary .label { font-size: 12px; color: var(--text-secondary); }
+  .summary .value { font-size: 16px; font-weight: 700; color: var(--accent-strong); }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .card-head .title { font-size: 14px; font-weight: 600; }
+  .card-head .subtitle { font-size: 10px; color: var(--text-secondary); }
+  .card-head .total { font-size: 16px; font-weight: 700; color: var(--accent-strong); white-space: nowrap; }
+
+  .ref {
+    font-size: 10px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+
+  .check {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: -2px;
+  }
+
+  .canister-block { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .canister-block:last-of-type { border-bottom: none; }
+
+  .row { display: flex; align-items: center; gap: 6px; }
+  .field { display: flex; flex-direction: column; gap: 2px; }
+  .field .lbl { font-size: 9px; color: var(--text-secondary); white-space: nowrap; }
+  .field input {
+    height: 32px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--field-bg);
+    color: var(--text-primary);
+    font-family: inherit;
+    width: 100%;
+    padding: 0;
+  }
+  .field input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .field input.auto {
+    background: var(--field-auto-bg);
+    border-color: transparent;
+    font-weight: 400;
+    color: var(--text-secondary);
+  }
+  .op { width: 14px; height: 43px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-secondary); margin-top: 13px; }
+
+  .w44 { width: 44px; }
+  .w60 { width: 60px; }
+  .w70 { width: 70px; }
+  .w80 { width: 80px; }
+  .w105 { display: flex; flex-direction: column; gap: 1px; width: 105px; }
+  .w105 .name { font-size: 12px; font-weight: 500; }
+
+  .add-btn {
+    height: 32px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    width: 100%;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .add-btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* ===== Final result table ===== */
+  table.result {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.result th, table.result td {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 4px;
+    text-align: right;
+  }
+  table.result th:first-child, table.result td:first-child { text-align: left; }
+  table.result th { color: var(--text-secondary); font-weight: 600; font-size: 11px; }
+  table.result td.total { color: var(--accent-strong); font-weight: 700; }
+  table.result tfoot td { font-weight: 700; color: var(--text-primary); border-top: 2px solid var(--border); border-bottom: none; }
+
+  .submit-btn {
+    height: 44px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #0B0F19;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* ===== Admin overlay ===== */
+  .admin-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+  }
+  .admin-backdrop.open { opacity: 1; pointer-events: auto; }
+  .admin-panel {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 86%;
+    background: var(--card-bg);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 11;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+  }
+  .admin-panel.open { transform: translateX(0); }
+  .admin-panel h2 { font-size: 15px; margin: 0; }
+  .admin-panel h3 { font-size: 12px; margin: 4px 0 0; color: var(--text-secondary); font-weight: 600; }
+  .admin-panel .close-btn {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .admin-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .admin-item .name { font-size: 12px; font-weight: 600; }
+  .admin-item .cat { font-size: 10px; color: var(--text-secondary); }
+  .admin-link {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+
+  /* ===== Autosave toast ===== */
+  .save-toast {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translate(-50%, 16px);
+    background: rgba(74,222,128,0.15);
+    border: 1px solid rgba(74,222,128,0.35);
+    color: #4ADE80;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 999px;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .save-toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- Top bar: tabs + admin (sticky, always on screen). Date lives in the saved file name only. -->
+  <div class="topbar">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="back">Back</button>
+      <button class="tab-btn" data-tab="front">Front</button>
+      <button class="tab-btn" data-tab="expired">Material Exp</button>
+      <button class="tab-btn" data-tab="closing">Closing</button>
+      <button class="tab-btn" data-tab="final">Final</button>
+    </div>
+    <button class="admin-btn" id="adminBtn">Admin</button>
+  </div>
+
+  <div class="content">
+
+    <!-- ===== 1. Back ===== -->
+    <section class="panel active" id="panel-back">
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Coffee Beans</div><div class="subtitle">Raw Material · pcs</div></div>
+          <div class="total">1200 pcs</div>
+        </div>
+        <div class="ref">Per bag 300 · Per box 600</div>
+        <div class="row">
+          <div class="w105"><div class="name">Loose</div></div>
+          <div class="field w70"><div class="lbl">Open bags</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="op">→</div>
+          <div class="field w70"><div class="lbl">Bag sum</div><input class="auto" disabled value="600" /></div>
+        </div>
+        <div class="row">
+          <div class="w105"><div class="name">Ctn</div></div>
+          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">→</div>
+          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="600" /></div>
+        </div>
+        <div class="check">600 + 600 = 1200 pcs</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Matcha Powder</div><div class="subtitle">Syrup · pcs</div></div>
+          <div class="total">1000 pcs</div>
+        </div>
+        <div class="ref">Per bag 200 · Per box 800</div>
+        <div class="row">
+          <div class="w105"><div class="name">Loose</div></div>
+          <div class="field w70"><div class="lbl">Open bags</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">→</div>
+          <div class="field w70"><div class="lbl">Bag sum</div><input class="auto" disabled value="200" /></div>
+        </div>
+        <div class="row">
+          <div class="w105"><div class="name">Ctn</div></div>
+          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">→</div>
+          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="800" /></div>
+        </div>
+        <div class="check">200 + 800 = 1000 pcs</div>
+      </div>
+    </section>
+
+    <!-- ===== 2. Front ===== -->
+    <section class="panel" id="panel-front">
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Coffee Beans</div><div class="subtitle">Raw Material · pcs</div></div>
+          <div class="total">1200 pcs</div>
+        </div>
+        <div class="ref">Per box 600</div>
+        <div class="row">
+          <div class="w105"><div class="name">Ctn</div></div>
+          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="op">→</div>
+          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="1200" /></div>
+        </div>
+        <div class="check">2 × 600 = 1200 pcs</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Matcha Powder</div><div class="subtitle">Syrup · pcs</div></div>
+          <div class="total">800 pcs</div>
+        </div>
+        <div class="ref">Per box 800</div>
+        <div class="row">
+          <div class="w105"><div class="name">Ctn</div></div>
+          <div class="field w70"><div class="lbl">Boxes</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1" /></div>
+          <div class="op">→</div>
+          <div class="field w70"><div class="lbl">Box sum</div><input class="auto" disabled value="800" /></div>
+        </div>
+        <div class="check">1 × 800 = 800 pcs</div>
+      </div>
+    </section>
+
+    <!-- ===== 3. Material Expired ===== -->
+    <section class="panel" id="panel-expired">
+      <div class="summary">
+        <div class="label">Total cream</div>
+        <div class="value" id="creamTotal">1820 g</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Whipping Cream</div><div class="subtitle">Frozen · g</div></div>
+          <div class="total" id="creamTotal2">1820 g</div>
+        </div>
+
+        <div id="canisterList">
+          <div class="canister-block canister" data-syrup="20" data-tare="150">
+            <div class="ref">Full 1170 · Container 150</div>
+            <div class="row">
+              <div class="w105"><div class="name">Vanilla</div></div>
+              <div class="field w70"><div class="lbl">Total wt</div><input class="auto-save canister-total" inputmode="numeric" pattern="[0-9]*" value="1020" /></div>
+              <div class="op">→</div>
+              <div class="field w70"><div class="lbl">Cream</div><input class="auto canister-cream" disabled value="850" /></div>
+            </div>
+            <div class="check canister-check">1020 − 20 − 150 = 850 g</div>
+          </div>
+
+          <div class="canister-block canister" data-syrup="50" data-tare="150">
+            <div class="ref">Full 1220 · Container 150</div>
+            <div class="row">
+              <div class="w105"><div class="name">Sakura</div></div>
+              <div class="field w70"><div class="lbl">Total wt</div><input class="auto-save canister-total" inputmode="numeric" pattern="[0-9]*" value="1170" /></div>
+              <div class="op">→</div>
+              <div class="field w70"><div class="lbl">Cream</div><input class="auto canister-cream" disabled value="970" /></div>
+            </div>
+            <div class="check canister-check">1170 − 50 − 150 = 970 g</div>
+          </div>
+        </div>
+
+        <button class="add-btn" id="addCanisterBtn">+ Add canister · 2/5</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Oat Milk</div><div class="subtitle">Raw Material · g</div></div>
+          <div class="total">365 g</div>
+        </div>
+        <div class="ref">Full 1000 · Container 35</div>
+        <div class="row">
+          <div class="field w70"><div class="lbl">Opened</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="320" /></div>
+          <div class="op">+</div>
+          <div class="field w70"><div class="lbl">Add</div><input class="auto" disabled value="45" /></div>
+          <div class="op">=</div>
+          <div class="field w70"><div class="lbl">Loss total</div><input class="auto" disabled value="365" /></div>
+        </div>
+        <div class="check">320 + 45 = 365 g</div>
+      </div>
+    </section>
+
+    <!-- ===== 4. Closing ===== -->
+    <section class="panel" id="panel-closing">
+      <div class="summary">
+        <div class="label">Items counted</div>
+        <div class="value">2 / 2</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Coffee Beans</div><div class="subtitle">Raw Material · pcs</div></div>
+          <div class="total">64 pcs</div>
+        </div>
+        <div class="ref">Per bag 300 · Per box 600</div>
+        <div class="row">
+          <div class="w105"><div class="name">Loose</div></div>
+          <div class="field w44"><div class="lbl">Rows</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="6" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">Lines</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="8" /></div>
+          <div class="op">+</div>
+          <div class="field w44"><div class="lbl">Loose</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="0" /></div>
+          <div class="op">=</div>
+          <div class="field w60"><div class="lbl">Loose total</div><input class="auto" disabled value="48" /></div>
+        </div>
+        <div class="row">
+          <div class="w105"><div class="name">Ctn</div></div>
+          <div class="field w60"><div class="lbl">Box count</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="op">=</div>
+          <div class="field w60"><div class="lbl">Box sum</div><input class="auto" disabled value="16" /></div>
+        </div>
+        <div class="check">48 + 16 = 64 pcs</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><div class="title">Matcha Powder</div><div class="subtitle">Syrup · pcs</div></div>
+          <div class="total">42 pcs</div>
+        </div>
+        <div class="ref">Per bag 200 · Per box 800</div>
+        <div class="row">
+          <div class="w105"><div class="name">Loose</div></div>
+          <div class="field w44"><div class="lbl">Rows</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="4" /></div>
+          <div class="op">×</div>
+          <div class="field w44"><div class="lbl">Lines</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="10" /></div>
+          <div class="op">+</div>
+          <div class="field w44"><div class="lbl">Loose</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="2" /></div>
+          <div class="op">=</div>
+          <div class="field w60"><div class="lbl">Loose total</div><input class="auto" disabled value="42" /></div>
+        </div>
+        <div class="row">
+          <div class="w105"><div class="name">Ctn</div></div>
+          <div class="field w60"><div class="lbl">Box count</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="0" /></div>
+          <div class="op">=</div>
+          <div class="field w60"><div class="lbl">Box sum</div><input class="auto" disabled value="0" /></div>
+        </div>
+        <div class="check">42 + 0 = 42 pcs</div>
+      </div>
+    </section>
+
+    <!-- ===== 5. Final ===== -->
+    <section class="panel" id="panel-final">
+      <div class="summary">
+        <div class="label">Total = Back + Front + Closing</div>
+        <div class="value">4306 pcs</div>
+      </div>
+
+      <div class="card">
+        <table class="result">
+          <thead>
+            <tr><th>Item</th><th>Back</th><th>Front</th><th>Closing</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Coffee Beans</td><td>1200</td><td>1200</td><td>64</td><td class="total">2464</td></tr>
+            <tr><td>Matcha Powder</td><td>1000</td><td>800</td><td>42</td><td class="total">1842</td></tr>
+          </tbody>
+          <tfoot>
+            <tr><td>Grand total</td><td>2200</td><td>2000</td><td>106</td><td class="total">4306</td></tr>
+          </tfoot>
+        </table>
+        <div class="check">Coffee Beans: 1200 + 1200 + 64 = 2464 pcs</div>
+        <div class="check">Matcha Powder: 1000 + 800 + 42 = 1842 pcs</div>
+        <div class="check">Grand total: 2464 + 1842 = 4306 pcs</div>
+      </div>
+
+      <button class="submit-btn">Submit for Approval</button>
+    </section>
+
+  </div>
+
+  <!-- Admin overlay (slides in, no page reload) -->
+  <div class="admin-backdrop" id="adminBackdrop"></div>
+  <div class="admin-panel" id="adminPanel">
+    <button class="close-btn" id="adminClose">✕</button>
+    <h2>Admin</h2>
+
+    <h3>Items</h3>
+    <div class="admin-item">
+      <div class="name">Coffee Beans</div>
+      <div class="cat">Raw Material — solid · pcs</div>
+      <div class="row">
+        <div class="field w80"><div class="lbl">Full pack g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1000" /></div>
+        <div class="field w80"><div class="lbl">Container g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="60" /></div>
+        <div class="field w70"><div class="lbl">Per bag</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="300" /></div>
+        <div class="field w70"><div class="lbl">Per box</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="600" /></div>
+      </div>
+    </div>
+
+    <div class="admin-item">
+      <div class="name">Matcha Powder</div>
+      <div class="cat">Syrup — solid · pcs</div>
+      <div class="row">
+        <div class="field w80"><div class="lbl">Full pack g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1000" /></div>
+        <div class="field w80"><div class="lbl">Container g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="40" /></div>
+        <div class="field w70"><div class="lbl">Per bag</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="200" /></div>
+        <div class="field w70"><div class="lbl">Per box</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="800" /></div>
+      </div>
+    </div>
+
+    <div class="admin-item">
+      <div class="name">Oat Milk</div>
+      <div class="cat">Raw Material — liquid · g</div>
+      <div class="row">
+        <div class="field w80"><div class="lbl">Full pack g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1000" /></div>
+        <div class="field w80"><div class="lbl">Container g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="35" /></div>
+      </div>
+    </div>
+
+    <div class="admin-item">
+      <div class="name">Vanilla Whipping Cream</div>
+      <div class="cat">Frozen — canister · g</div>
+      <div class="row">
+        <div class="field w80"><div class="lbl">Full pack g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1170" /></div>
+        <div class="field w80"><div class="lbl">Container g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="150" /></div>
+        <div class="field w70"><div class="lbl">Pumps</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="4" /></div>
+        <div class="field w70"><div class="lbl">ml/pump</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="5" /></div>
+      </div>
+    </div>
+
+    <div class="admin-item">
+      <div class="name">Sakura Whipping Cream</div>
+      <div class="cat">Frozen — canister · g</div>
+      <div class="row">
+        <div class="field w80"><div class="lbl">Full pack g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="1220" /></div>
+        <div class="field w80"><div class="lbl">Container g</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="150" /></div>
+        <div class="field w70"><div class="lbl">Pumps</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="10" /></div>
+        <div class="field w70"><div class="lbl">ml/pump</div><input class="auto-save" inputmode="numeric" pattern="[0-9]*" value="5" /></div>
+      </div>
+    </div>
+
+    <h3>More</h3>
+    <div class="admin-link">Records</div>
+    <div class="admin-link">Approvals</div>
+    <div class="admin-link">Settings</div>
+  </div>
+
+  <!-- Autosave toast -->
+  <div class="save-toast" id="saveToast">Saved</div>
+
+</div>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Admin overlay toggle (no reload, works from any tab)
+  const adminBtn = document.getElementById('adminBtn');
+  const adminPanel = document.getElementById('adminPanel');
+  const adminBackdrop = document.getElementById('adminBackdrop');
+  function closeAdmin() {
+    adminPanel.classList.remove('open');
+    adminBackdrop.classList.remove('open');
+  }
+  adminBtn.addEventListener('click', () => {
+    adminPanel.classList.add('open');
+    adminBackdrop.classList.add('open');
+  });
+  document.getElementById('adminClose').addEventListener('click', closeAdmin);
+  adminBackdrop.addEventListener('click', closeAdmin);
+
+  // Autosave toast on any input
+  let saveTimer;
+  const toast = document.getElementById('saveToast');
+  function bindAutosave(el) {
+    el.addEventListener('input', () => {
+      clearTimeout(saveTimer);
+      toast.classList.remove('show');
+      saveTimer = setTimeout(() => {
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 1200);
+      }, 500);
+    });
+  }
+  document.querySelectorAll('.auto-save').forEach(bindAutosave);
+
+  // Whipping cream: live cream = total - syrup - tare, sum into header/summary, update self-check line
+  function recalcCream() {
+    let sum = 0;
+    document.querySelectorAll('.canister').forEach(row => {
+      const syrup = Number(row.dataset.syrup);
+      const tare = Number(row.dataset.tare);
+      const total = Number(row.querySelector('.canister-total').value) || 0;
+      const cream = Math.max(0, total - syrup - tare);
+      row.querySelector('.canister-cream').value = cream;
+      row.querySelector('.canister-check').textContent = `${total} − ${syrup} − ${tare} = ${cream} g`;
+      sum += cream;
+    });
+    document.getElementById('creamTotal').textContent = sum + ' g';
+    document.getElementById('creamTotal2').textContent = sum + ' g';
+  }
+  document.querySelectorAll('.canister-total').forEach(el => {
+    el.addEventListener('input', recalcCream);
+  });
+
+  // Add canister (max 5 total canisters, including the 2 presets)
+  const MAX_CANISTERS = 5;
+  document.getElementById('addCanisterBtn').addEventListener('click', function () {
+    const list = document.getElementById('canisterList');
+    const count = list.querySelectorAll('.canister').length;
+    if (count >= MAX_CANISTERS) return;
+    const block = document.createElement('div');
+    block.className = 'canister-block canister';
+    block.dataset.syrup = '0';
+    block.dataset.tare = '150';
+    block.innerHTML = `
+      <div class="ref">Full — · Container 150</div>
+      <div class="row">
+        <div class="w105"><div class="name">Custom ${count + 1}</div></div>
+        <div class="field w70"><div class="lbl">Total wt</div><input class="auto-save canister-total" inputmode="numeric" pattern="[0-9]*" value="150" /></div>
+        <div class="op">→</div>
+        <div class="field w70"><div class="lbl">Cream</div><input class="auto canister-cream" disabled value="0" /></div>
+      </div>
+      <div class="check canister-check">150 − 0 − 150 = 0 g</div>
+    `;
+    list.appendChild(block);
+    const input = block.querySelector('.canister-total');
+    input.addEventListener('input', recalcCream);
+    bindAutosave(input);
+    recalcCream();
+    const newCount = list.querySelectorAll('.canister').length;
+    this.textContent = `+ Add canister · ${newCount}/${MAX_CANISTERS}`;
+    if (newCount >= MAX_CANISTERS) this.disabled = true;
+  });
+</script>
+
+</body>
+</html>
