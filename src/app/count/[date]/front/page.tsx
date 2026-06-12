@@ -16,41 +16,67 @@ export default function FrontPage({ params }: { params: { date: string } }) {
 
   if (!record) return null;
 
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Stage 2 — Front (Bar Area)</h2>
-      <p className="text-sm text-gray-500">
-        Count by box/unit only — no loose items at this stage.
-      </p>
+  let currentCategory = "";
 
-      <div className="space-y-3">
-        {items.map((item) => {
-          const entry = record.front[item.id];
-          return (
-            <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-              <div className="mb-2 text-xs uppercase text-gray-400">{item.category}</div>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="font-medium">{item.name}</div>
-                <div className="text-sm text-gray-500">/box: {item.per_box_pcs ?? "–"}</div>
+  return (
+    <>
+      {items.map((item) => {
+        const entry = record.front[item.id];
+        const showCategory = item.category !== currentCategory;
+        currentCategory = item.category;
+        const perBox = item.front_per_box_pcs ?? item.per_box_pcs;
+
+        return (
+          <div key={item.id}>
+            {showCategory && <div className="category-label">{item.category}</div>}
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <div className="title">{item.name}</div>
+                  <div className="subtitle">
+                    {item.category} · {item.unit ?? ""}
+                  </div>
+                </div>
+                <div className="total">
+                  {entry?.total ?? 0} {item.unit}
+                </div>
               </div>
 
-              <label className="mb-1 block text-sm text-gray-600">Box count</label>
-              <input
-                type="number"
-                className="mb-2 w-32 rounded border border-blue-200 bg-input px-2 py-1"
-                value={entry?.box_count ?? ""}
-                onChange={(e) =>
-                  setFront(item.id, {
-                    box_count: e.target.value === "" ? null : Number(e.target.value),
-                  })
-                }
-              />
+              <div className="row">
+                <div className="w105">
+                  <div className="name">Ctn</div>
+                </div>
+                <div className="field w44">
+                  <div className="lbl">Boxes</div>
+                  <input
+                    inputMode="numeric"
+                    value={entry?.box_count ?? ""}
+                    onChange={(e) =>
+                      setFront(item.id, {
+                        box_count: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <div className="op">×</div>
+                <div className="field w44">
+                  <div className="lbl">/box</div>
+                  <div className="const">{perBox ?? "–"}</div>
+                </div>
+                <div className="op">=</div>
+                <div className="field w70">
+                  <div className="lbl">Sum</div>
+                  <input className="auto" disabled value={entry?.total ?? ""} />
+                </div>
+              </div>
 
-              <div className="font-medium">Total: {entry?.total ?? 0} pcs</div>
+              <div className="check">
+                {entry?.box_count ?? 0} × {perBox ?? 0} = {entry?.total ?? 0} {item.unit}
+              </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
+          </div>
+        );
+      })}
+    </>
   );
 }

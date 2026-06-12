@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 const SECTIONS = [
-  { href: "/admin/items", label: "Items Manager", desc: "Add / edit / delete items, formulas, sizes" },
   { href: "/admin/records", label: "Records", desc: "View and re-open historical daily records" },
   { href: "/admin/approvals", label: "Approvals", desc: "Pending submissions queue" },
   { href: "/admin/settings", label: "Settings", desc: "Loss rates, bag sizes, Google Drive folder" },

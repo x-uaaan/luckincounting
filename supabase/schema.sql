@@ -13,15 +13,27 @@ create table if not exists items (
   sort_order int not null default 0,
   appears_in text[] not null default '{}',       -- subset of: back, front, expired, closing, sheet2
 
+  unit text,                  -- display unit, e.g. "pcs", "bag", "bottle", "box", "pack", "can", "g"
+
   per_bag_pcs numeric,        -- null = "-" (whole-unit item)
   per_box_pcs numeric,
+  front_per_box_pcs numeric,      -- Front box pcs (may differ from per_box_pcs)
+  closing_per_box_pcs numeric,    -- Closing storage-box pcs (may differ from per_box_pcs)
   bag_size_g numeric,
+  inventory_bag_size_g numeric,   -- bag size used by closing_inventory_formula (falls back to bag_size_g)
 
   loss_formula text not null default 'none'
     check (loss_formula in ('multiply', 'subtract', 'add', 'none')),
   loss_rate numeric,
   loss_subtract_ml numeric,
   loss_addend_item_id text references items(id),
+
+  default_container_id text,  -- Material Expired container-tare preset (see containers.ts)
+
+  closing_inventory_formula text
+    check (closing_inventory_formula in ('non_coffee', 'under_cabinet', 'whipping_cream')),
+
+  loose_grid boolean not null default false, -- row x line + loose entry (Raw Material/Syrup/Frozen)
 
   closing_input_type text not null default 'weight'
     check (closing_input_type in ('weight', 'count', 'sleeves')),
@@ -41,9 +53,8 @@ create table if not exists daily_records (
 
   back jsonb not null default '{}',               -- { [item_id]: BackEntry }
   front jsonb not null default '{}',              -- { [item_id]: FrontEntry }
-  material_loss jsonb not null default '{}',      -- { [item_id]: MaterialLossEntry }
-  material_inventory jsonb not null default '{}', -- { [item_id]: MaterialInventoryEntry }
-  closing jsonb not null default '{}',            -- { [item_id]: ClosingEntry }
+  material_loss jsonb not null default '{}',      -- { [item_id]: MaterialLossEntry } (Loss only, §A.6)
+  closing jsonb not null default '{}',            -- { [item_id]: ClosingEntry } (incl. former Inventory fields, §A.7)
   sheet2 jsonb not null default '{}',             -- { [item_id]: Sheet2Entry } (computed)
 
   approved_by text,

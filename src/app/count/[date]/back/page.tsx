@@ -3,7 +3,6 @@
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { seedItems } from "@/data/seedItems";
-import { checkBoxSumMismatch } from "@/lib/calculations";
 
 export default function BackPage({ params }: { params: { date: string } }) {
   useLoadDate(params.date);
@@ -20,150 +19,127 @@ export default function BackPage({ params }: { params: { date: string } }) {
   let currentCategory = "";
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Stage 1 — Back (Store Room)</h2>
+    <>
+      {items.map((item) => {
+        const entry = record.back[item.id];
+        const showCategory = item.category !== currentCategory;
+        currentCategory = item.category;
 
-      {/* Desktop table */}
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 text-left">
-              <th className="p-2">Item</th>
-              <th className="p-2 text-right">/bag pcs</th>
-              <th className="p-2 text-right">Open</th>
-              <th className="p-2 text-right">Bag Sum</th>
-              <th className="p-2 text-right">/box pcs</th>
-              <th className="p-2 text-right">Box</th>
-              <th className="p-2 text-right">Box Sum</th>
-              <th className="p-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const entry = record.back[item.id];
-              const showCategory = item.category !== currentCategory;
-              currentCategory = item.category;
+        const hasBagFactor = item.per_bag_pcs != null;
+        const hasBoxFactor = item.per_box_pcs != null;
 
-              const mismatch = checkBoxSumMismatch(
-                entry?.box_count ?? null,
-                item.per_box_pcs,
-                entry?.box_sum ?? null
-              );
+        const bagSum = entry?.bag_sum ?? null;
+        const boxSum = entry?.box_sum ?? null;
+        const checkParts: string[] = [];
+        if (bagSum != null) checkParts.push(String(bagSum));
+        if (boxSum != null) checkParts.push(String(boxSum));
 
-              return (
-                <>
-                  {showCategory && (
-                    <tr key={`${item.category}-hdr`} className="bg-gray-100">
-                      <td colSpan={8} className="p-2 font-medium text-gray-600">
-                        {item.category}
-                      </td>
-                    </tr>
-                  )}
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="p-2">{item.name}</td>
-                    <td className="p-2 text-right text-gray-500">
-                      {item.per_bag_pcs ?? "–"}
-                    </td>
-                    <td className="p-2 text-right">
-                      <input
-                        type="number"
-                        className="w-20 rounded border border-blue-200 bg-input px-2 py-1 text-right"
-                        value={entry?.open_bags ?? ""}
-                        onChange={(e) =>
-                          setBack(item.id, {
-                            open_bags: e.target.value === "" ? null : Number(e.target.value),
-                            box_count: entry?.box_count ?? null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="p-2 text-right text-gray-500">
-                      {entry?.bag_sum ?? (item.per_bag_pcs == null ? "–" : 0)}
-                    </td>
-                    <td className="p-2 text-right text-gray-500">
-                      {item.per_box_pcs ?? "–"}
-                    </td>
-                    <td className="p-2 text-right">
-                      <input
-                        type="number"
-                        className="w-20 rounded border border-blue-200 bg-input px-2 py-1 text-right"
-                        value={entry?.box_count ?? ""}
-                        onChange={(e) =>
-                          setBack(item.id, {
-                            open_bags: entry?.open_bags ?? null,
-                            box_count: e.target.value === "" ? null : Number(e.target.value),
-                          })
-                        }
-                      />
-                    </td>
-                    <td
-                      className={`p-2 text-right ${
-                        mismatch ? "rounded border border-warn bg-red-50" : "text-gray-500"
-                      }`}
-                    >
-                      {entry?.box_sum ?? (item.per_box_pcs == null ? "–" : 0)}
-                    </td>
-                    <td className="p-2 text-right font-medium">{entry?.total ?? 0}</td>
-                  </tr>
-                </>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile cards */}
-      <div className="space-y-3 md:hidden">
-        {items.map((item) => {
-          const entry = record.back[item.id];
-          return (
-            <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-              <div className="mb-2 text-xs uppercase text-gray-400">{item.category}</div>
-              <div className="mb-2 font-medium">{item.name}</div>
-
-              <label className="mb-1 block text-sm text-gray-600">
-                Open bags{item.per_bag_pcs == null ? " (whole units)" : ""}
-              </label>
-              <input
-                type="number"
-                className="mb-2 w-full rounded border border-blue-200 bg-input px-2 py-1"
-                value={entry?.open_bags ?? ""}
-                onChange={(e) =>
-                  setBack(item.id, {
-                    open_bags: e.target.value === "" ? null : Number(e.target.value),
-                    box_count: entry?.box_count ?? null,
-                  })
-                }
-              />
-              <div className="mb-2 text-sm text-gray-500">
-                Bag sum: {entry?.bag_sum ?? (item.per_bag_pcs == null ? "–" : 0)} pcs (auto)
+        return (
+          <div key={item.id}>
+            {showCategory && <div className="category-label">{item.category}</div>}
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <div className="title">{item.name}</div>
+                  <div className="subtitle">
+                    {item.category} · {item.unit ?? ""}
+                  </div>
+                </div>
+                <div className="total">
+                  {entry?.total ?? 0} {item.unit}
+                </div>
               </div>
 
-              {item.per_box_pcs != null && (
-                <>
-                  <label className="mb-1 block text-sm text-gray-600">Full boxes</label>
-                  <input
-                    type="number"
-                    className="mb-2 w-full rounded border border-blue-200 bg-input px-2 py-1"
-                    value={entry?.box_count ?? ""}
-                    onChange={(e) =>
-                      setBack(item.id, {
-                        open_bags: entry?.open_bags ?? null,
-                        box_count: e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
-                  />
-                  <div className="mb-2 text-sm text-gray-500">
-                    Box sum: {entry?.box_sum ?? 0} pcs (auto)
+              {hasBagFactor ? (
+                <div className="row">
+                  <div className="w105">
+                    <div className="name">Loose</div>
                   </div>
-                </>
+                  <div className="field w44">
+                    <div className="lbl">Bags</div>
+                    <input
+                      inputMode="numeric"
+                      value={entry?.open_bags ?? ""}
+                      onChange={(e) =>
+                        setBack(item.id, {
+                          open_bags: e.target.value === "" ? null : Number(e.target.value),
+                          box_count: entry?.box_count ?? null,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="op">×</div>
+                  <div className="field w44">
+                    <div className="lbl">/bag</div>
+                    <div className="const">{item.per_bag_pcs}</div>
+                  </div>
+                  <div className="op">=</div>
+                  <div className="field w70">
+                    <div className="lbl">Sum</div>
+                    <input className="auto" disabled value={bagSum ?? ""} />
+                  </div>
+                </div>
+              ) : (
+                <div className="row">
+                  <div className="w105">
+                    <div className="name">Count</div>
+                  </div>
+                  <div className="field w70">
+                    <div className="lbl">Units</div>
+                    <input
+                      inputMode="numeric"
+                      value={entry?.open_bags ?? ""}
+                      onChange={(e) =>
+                        setBack(item.id, {
+                          open_bags: e.target.value === "" ? null : Number(e.target.value),
+                          box_count: entry?.box_count ?? null,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
               )}
 
-              <div className="font-medium">Total: {entry?.total ?? 0} pcs</div>
+              {hasBoxFactor && (
+                <div className="row">
+                  <div className="w105">
+                    <div className="name">Ctn</div>
+                  </div>
+                  <div className="field w44">
+                    <div className="lbl">Boxes</div>
+                    <input
+                      inputMode="numeric"
+                      value={entry?.box_count ?? ""}
+                      onChange={(e) =>
+                        setBack(item.id, {
+                          open_bags: entry?.open_bags ?? null,
+                          box_count: e.target.value === "" ? null : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="op">×</div>
+                  <div className="field w44">
+                    <div className="lbl">/box</div>
+                    <div className="const">{item.per_box_pcs}</div>
+                  </div>
+                  <div className="op">=</div>
+                  <div className="field w70">
+                    <div className="lbl">Sum</div>
+                    <input className="auto" disabled value={boxSum ?? ""} />
+                  </div>
+                </div>
+              )}
+
+              {checkParts.length > 0 && (
+                <div className="check">
+                  {checkParts.join(" + ")} = {entry?.total ?? 0} {item.unit}
+                </div>
+              )}
             </div>
-          );
-        })}
-      </div>
-    </div>
+          </div>
+        );
+      })}
+    </>
   );
 }
