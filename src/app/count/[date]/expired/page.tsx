@@ -2,8 +2,7 @@
 
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
-import { seedItems } from "@/data/seedItems";
-import { CONTAINERS } from "@/data/containers";
+import { useItemsStore } from "@/store/useItemsStore";
 import { calcWhippingCream } from "@/lib/calculations";
 import type { WhippingCreamCalc } from "@/lib/types";
 
@@ -22,12 +21,19 @@ export default function ExpiredPage({ params }: { params: { date: string } }) {
 
   const record = useCountingStore((s) => s.record);
   const setMaterialLoss = useCountingStore((s) => s.setMaterialLoss);
+  const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
+  const allItems = useItemsStore((s) => s.items);
+  const containers = useItemsStore((s) => s.containers);
 
-  const items = seedItems
+  const items = allItems
     .filter((i) => i.appears_in.includes("expired"))
     .sort((a, b) => a.sort_order - b.sort_order);
 
   if (!record) return null;
+
+  const errorItemIds = new Set(
+    selfCheckWarnings.filter((w) => w.stage === "expired").map((w) => w.itemId)
+  );
 
   const creamEntry = record.material_loss["cream"];
   const whippingCream = creamEntry?.whipping_cream ?? DEFAULT_WHIPPING_CREAM;
@@ -46,7 +52,7 @@ export default function ExpiredPage({ params }: { params: { date: string } }) {
 
         if (item.id === "cream") {
           return (
-            <div key={item.id} className="card">
+            <div key={item.id} className={`card ${errorItemIds.has(item.id) ? "warn" : ""}`}>
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>
@@ -135,11 +141,11 @@ export default function ExpiredPage({ params }: { params: { date: string } }) {
         }
 
         const containerOptions = item.default_container_id
-          ? CONTAINERS
+          ? containers
           : null;
         const selectedContainerId = entry?.container_id ?? item.default_container_id ?? "";
         const tare = selectedContainerId
-          ? CONTAINERS.find((c) => c.id === selectedContainerId)?.tare_g ?? 0
+          ? containers.find((c) => c.id === selectedContainerId)?.tare_g ?? 0
           : 0;
 
         let formulaCheck = "";
@@ -157,7 +163,7 @@ export default function ExpiredPage({ params }: { params: { date: string } }) {
         }
 
         return (
-          <div key={item.id} className={`card ${isPandanWarning ? "warn" : ""}`}>
+          <div key={item.id} className={`card ${isPandanWarning || errorItemIds.has(item.id) ? "warn" : ""}`}>
             <div className="card-head">
               <div>
                 <div className="title">{item.name}</div>
@@ -184,7 +190,7 @@ export default function ExpiredPage({ params }: { params: { date: string } }) {
                       })
                     }
                   >
-                    {CONTAINERS.map((c) => (
+                    {containers.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name} ({c.tare_g})
                       </option>

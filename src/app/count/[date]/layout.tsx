@@ -8,9 +8,9 @@ export default function CountLayout({
   params: { date: string };
 }) {
   return (
-    <div className="app-dark">
+    <>
       <Topbar date={params.date} />
       <div className="content">{children}</div>
-    </div>
+    </>
   );
 }

@@ -400,6 +400,207 @@ body {
   display: block;
 }
 
+/* ===== Home page ===== */
+.app-dark .home-header {
+  text-align: center;
+  margin-top: 24px;
+}
+.app-dark .home-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+.app-dark .home-header p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+}
+.app-dark .home-link {
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.app-dark .home-link.primary {
+  background: var(--accent);
+  color: #0b0f19;
+}
+.app-dark .home-link.secondary {
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+/* ===== Admin pages ===== */
+.app-dark .admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.app-dark .admin-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+.app-dark .admin-header .back-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+.app-dark .admin-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .app-dark .admin-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.app-dark .admin-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.app-dark .admin-card .title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.app-dark .admin-card .desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ===== Admin CRUD tables ===== */
+.app-dark .admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.app-dark .admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.app-dark .admin-table th,
+.app-dark .admin-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: left;
+}
+.app-dark .admin-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  z-index: 1;
+}
+.app-dark .admin-table tr:last-child td {
+  border-bottom: none;
+}
+.app-dark .admin-table input,
+.app-dark .admin-table select {
+  height: 28px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--field-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  padding: 0 6px;
+  width: 100%;
+  min-width: 64px;
+}
+.app-dark .admin-table input:focus,
+.app-dark .admin-table select:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+.app-dark .admin-table input.name-input {
+  min-width: 120px;
+}
+
+.app-dark .row-actions {
+  display: flex;
+  gap: 4px;
+}
+.app-dark .row-actions button {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.app-dark .row-actions button.confirm {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.app-dark .add-row-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-end;
+  padding: 10px 12px;
+  background: var(--card-bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.app-dark .add-row-form .field {
+  min-width: 90px;
+}
+.app-dark .add-row-form button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #0b0f19;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.app-dark .add-row-form button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.app-dark .checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.app-dark .checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* ===== Autosave toast ===== */
 .app-dark .save-toast {
   position: fixed;

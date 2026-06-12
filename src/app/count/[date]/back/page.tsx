@@ -2,19 +2,25 @@
 
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
-import { seedItems } from "@/data/seedItems";
+import { useItemsStore } from "@/store/useItemsStore";
 
 export default function BackPage({ params }: { params: { date: string } }) {
   useLoadDate(params.date);
 
   const record = useCountingStore((s) => s.record);
   const setBack = useCountingStore((s) => s.setBack);
+  const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
+  const allItems = useItemsStore((s) => s.items);
 
-  const items = seedItems
+  const items = allItems
     .filter((i) => i.appears_in.includes("back"))
     .sort((a, b) => a.sort_order - b.sort_order);
 
   if (!record) return null;
+
+  const errorItemIds = new Set(
+    selfCheckWarnings.filter((w) => w.stage === "back").map((w) => w.itemId)
+  );
 
   let currentCategory = "";
 
@@ -37,7 +43,7 @@ export default function BackPage({ params }: { params: { date: string } }) {
         return (
           <div key={item.id}>
             {showCategory && <div className="category-label">{item.category}</div>}
-            <div className="card">
+            <div className={`card ${errorItemIds.has(item.id) ? "warn" : ""}`}>
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>

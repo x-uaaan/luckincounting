@@ -44,6 +44,15 @@ export default function Topbar({ date }: { date: string }) {
         <Link href={`/count/${date}/result`} className="admin-link" onClick={() => setAdminOpen(false)}>
           Final results
         </Link>
+        <Link href="/admin/items" className="admin-link" onClick={() => setAdminOpen(false)}>
+          Items
+        </Link>
+        <Link href="/admin/loss" className="admin-link" onClick={() => setAdminOpen(false)}>
+          Loss
+        </Link>
+        <Link href="/admin/containers" className="admin-link" onClick={() => setAdminOpen(false)}>
+          Containers
+        </Link>
         <Link href="/admin/records" className="admin-link" onClick={() => setAdminOpen(false)}>
           Records
         </Link>

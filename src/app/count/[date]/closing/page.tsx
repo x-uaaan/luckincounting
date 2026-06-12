@@ -2,7 +2,7 @@
 
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
-import { seedItems } from "@/data/seedItems";
+import { useItemsStore } from "@/store/useItemsStore";
 import type { ClosingEntry } from "@/lib/types";
 
 const looseLabel: Record<string, string> = {
@@ -21,14 +21,22 @@ export default function ClosingPage({ params }: { params: { date: string } }) {
 
   const record = useCountingStore((s) => s.record);
   const setClosing = useCountingStore((s) => s.setClosing);
+  const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
+  const allItems = useItemsStore((s) => s.items);
 
-  const items = seedItems
+  const items = allItems
     .filter((i) => i.appears_in.includes("closing"))
     .sort((a, b) => a.sort_order - b.sort_order);
 
   if (!record) return null;
 
   const counted = items.filter((i) => record.closing[i.id]?.total != null).length;
+
+  const errorItemIds = new Set(
+    selfCheckWarnings
+      .filter((w) => w.stage === "closing" || w.stage === "sheet2")
+      .map((w) => w.itemId)
+  );
 
   let currentCategory = "";
 
@@ -59,6 +67,7 @@ export default function ClosingPage({ params }: { params: { date: string } }) {
           setClosing(item.id, { ...base, ...partial });
 
         const isPandanWarning = item.id === "pandan" && entry?.total == null;
+        const hasError = isPandanWarning || errorItemIds.has(item.id);
         const closingPerBox = item.closing_per_box_pcs ?? item.per_box_pcs;
         const invBagSize = item.inventory_bag_size_g ?? item.bag_size_g;
 
@@ -69,7 +78,7 @@ export default function ClosingPage({ params }: { params: { date: string } }) {
         return (
           <div key={item.id}>
             {showCategory && <div className="category-label">{item.category}</div>}
-            <div className={`card ${isPandanWarning ? "warn" : ""}`}>
+            <div className={`card ${hasError ? "warn" : ""}`}>
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>

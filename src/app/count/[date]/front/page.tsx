@@ -2,19 +2,25 @@
 
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
-import { seedItems } from "@/data/seedItems";
+import { useItemsStore } from "@/store/useItemsStore";
 
 export default function FrontPage({ params }: { params: { date: string } }) {
   useLoadDate(params.date);
 
   const record = useCountingStore((s) => s.record);
   const setFront = useCountingStore((s) => s.setFront);
+  const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
+  const allItems = useItemsStore((s) => s.items);
 
-  const items = seedItems
+  const items = allItems
     .filter((i) => i.appears_in.includes("front"))
     .sort((a, b) => a.sort_order - b.sort_order);
 
   if (!record) return null;
+
+  const errorItemIds = new Set(
+    selfCheckWarnings.filter((w) => w.stage === "front").map((w) => w.itemId)
+  );
 
   let currentCategory = "";
 
@@ -29,7 +35,7 @@ export default function FrontPage({ params }: { params: { date: string } }) {
         return (
           <div key={item.id}>
             {showCategory && <div className="category-label">{item.category}</div>}
-            <div className="card">
+            <div className={`card ${errorItemIds.has(item.id) ? "warn" : ""}`}>
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>

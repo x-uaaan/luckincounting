@@ -44,6 +44,17 @@ create table if not exists items (
 );
 
 -- ---------------------------------------------------------------------
+-- containers: admin-managed container-tare presets (CRUD via /admin/containers)
+-- ---------------------------------------------------------------------
+create table if not exists containers (
+  id text primary key,
+  name text not null,
+  tare_g numeric not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------
 -- daily_records: one row per counting day (YYMMDD)
 -- ---------------------------------------------------------------------
 create table if not exists daily_records (

@@ -8,6 +8,8 @@ import type {
   ClosingEntry,
   Sheet2Entry,
   WhippingCreamCalc,
+  DailyRecord,
+  ValidationWarning,
 } from "./types";
 
 const sumNullable = (...vals: (number | null | undefined)[]): number =>
@@ -207,4 +209,94 @@ export function checkBoxSumMismatch(
 ): boolean {
   if (box == null || per_box_pcs == null || recordedBoxSum == null) return false;
   return box * per_box_pcs !== recordedBoxSum;
+}
+
+// --- Self-check (countingflow.md S-01/E-03): re-runs every calc and flags
+// rows whose computed values look wrong so they can be fixed before submission.
+export function runSelfCheck(record: DailyRecord, items: Item[]): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+
+  for (const item of items) {
+    if (item.appears_in.includes("back")) {
+      const total = record.back[item.id]?.total;
+      if (total != null && total < 0) {
+        warnings.push({
+          itemId: item.id,
+          stage: "back",
+          field: "total",
+          message: `${item.name}: Back total is negative (${total})`,
+          severity: "error",
+        });
+      }
+    }
+
+    if (item.appears_in.includes("front")) {
+      const total = record.front[item.id]?.total;
+      if (total != null && total < 0) {
+        warnings.push({
+          itemId: item.id,
+          stage: "front",
+          field: "total",
+          message: `${item.name}: Front total is negative (${total})`,
+          severity: "error",
+        });
+      }
+    }
+
+    if (item.appears_in.includes("expired")) {
+      const entry = record.material_loss[item.id];
+      if (item.id === "pandan" && entry?.result == null) {
+        warnings.push({
+          itemId: item.id,
+          stage: "expired",
+          field: "result",
+          message: `${item.name}: container measurement missing (S-01)`,
+          severity: "error",
+        });
+      } else if (entry?.result != null && entry.result < 0) {
+        warnings.push({
+          itemId: item.id,
+          stage: "expired",
+          field: "result",
+          message: `${item.name}: Loss result is negative (${entry.result.toFixed(2)})`,
+          severity: "error",
+        });
+      }
+    }
+
+    if (item.appears_in.includes("closing")) {
+      const entry = record.closing[item.id];
+      if (entry?.loose != null && entry.loose < 0) {
+        warnings.push({
+          itemId: item.id,
+          stage: "closing",
+          field: "loose",
+          message: `${item.name}: derived loose amount is negative (${entry.loose.toFixed(2)})`,
+          severity: "error",
+        });
+      }
+      if (entry?.total != null && entry.total < 0) {
+        warnings.push({
+          itemId: item.id,
+          stage: "closing",
+          field: "total",
+          message: `${item.name}: Closing total is negative (${entry.total.toFixed(2)})`,
+          severity: "error",
+        });
+      }
+    }
+
+    // E-03: every Closing item must have a Sheet2 row
+    if (record.closing[item.id] && !record.sheet2[item.id]) {
+      warnings.push({
+        itemId: item.id,
+        stage: "sheet2",
+        field: "total",
+        message: `${item.name}: missing Sheet2 row for Closing entry (E-03)`,
+        severity: "error",
+      });
+    }
+  }
+
+  return warnings;
 }

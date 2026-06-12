@@ -1,17 +1,30 @@
 "use client";
 
+import Link from "next/link";
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
-import { seedItems } from "@/data/seedItems";
+import { useItemsStore } from "@/store/useItemsStore";
 import { round1 } from "@/lib/calculations";
 import { exportSheet2 } from "@/lib/xlsxExport";
+
+const STAGE_LABELS: Record<string, string> = {
+  back: "Back",
+  front: "Front",
+  expired: "Material Exp",
+  closing: "Closing",
+  sheet2: "Final",
+};
 
 export default function ResultPage({ params }: { params: { date: string } }) {
   useLoadDate(params.date);
 
   const record = useCountingStore((s) => s.record);
+  const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
+  const selfCheckRan = useCountingStore((s) => s.selfCheckRan);
+  const runSelfCheck = useCountingStore((s) => s.runSelfCheck);
+  const allItems = useItemsStore((s) => s.items);
 
-  const items = seedItems
+  const items = allItems
     .filter((i) => i.appears_in.includes("sheet2"))
     .sort((a, b) => a.sort_order - b.sort_order);
 
@@ -72,6 +85,32 @@ export default function ResultPage({ params }: { params: { date: string } }) {
           </tfoot>
         </table>
       </div>
+
+      <button className="submit-btn" onClick={runSelfCheck}>
+        Self Check
+      </button>
+
+      {selfCheckRan && selfCheckWarnings.length > 0 && (
+        <div className="card warn">
+          <div className="card-head">
+            <div className="title">Self check found {selfCheckWarnings.length} issue(s)</div>
+          </div>
+          {selfCheckWarnings.map((w, i) => (
+            <div key={i} className="warning">
+              <Link href={`/count/${params.date}/${w.stage === "sheet2" ? "closing" : w.stage}`}>
+                [{STAGE_LABELS[w.stage] ?? w.stage}]
+              </Link>{" "}
+              {w.message}
+            </div>
+          ))}
+        </div>
+      )}
+      {selfCheckRan && selfCheckWarnings.length === 0 && (
+        <div className="check">✓ Self check passed — no issues found.</div>
+      )}
+      {!selfCheckRan && (
+        <div className="check">Run Self Check to validate all stage calculations.</div>
+      )}
 
       <button className="submit-btn" onClick={() => exportSheet2(record, items)}>
         Submit for Approval
