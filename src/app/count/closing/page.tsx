@@ -16,8 +16,8 @@ type ClosingPartial = Pick<
   "under_cabinet" | "non_coffee" | "loose_rows" | "loose_lines" | "loose_extra" | "loose" | "box_count"
 >;
 
-export default function ClosingPage({ params }: { params: { date: string } }) {
-  useLoadDate(params.date);
+export default function ClosingPage() {
+  useLoadDate();
 
   const record = useCountingStore((s) => s.record);
   const setClosing = useCountingStore((s) => s.setClosing);

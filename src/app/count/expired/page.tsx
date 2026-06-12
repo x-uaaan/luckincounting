@@ -16,8 +16,8 @@ const DEFAULT_WHIPPING_CREAM: WhippingCreamCalc = {
 
 const MAX_CANISTERS = 5;
 
-export default function ExpiredPage({ params }: { params: { date: string } }) {
-  useLoadDate(params.date);
+export default function ExpiredPage() {
+  useLoadDate();
 
   const record = useCountingStore((s) => s.record);
   const setMaterialLoss = useCountingStore((s) => s.setMaterialLoss);

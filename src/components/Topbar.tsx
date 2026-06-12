@@ -12,7 +12,7 @@ const STAGES = [
   { slug: "result", label: "Final" },
 ];
 
-export default function Topbar({ date }: { date: string }) {
+export default function Topbar() {
   const pathname = usePathname();
   const [adminOpen, setAdminOpen] = useState(false);
 
@@ -21,7 +21,7 @@ export default function Topbar({ date }: { date: string }) {
       <div className="topbar">
         <nav className="tabs">
           {STAGES.map((stage) => {
-            const href = `/count/${date}/${stage.slug}`;
+            const href = `/count/${stage.slug}`;
             const active = pathname === href;
             return (
               <Link key={stage.slug} href={href} className={`tab-btn ${active ? "active" : ""}`}>
@@ -41,7 +41,7 @@ export default function Topbar({ date }: { date: string }) {
           ✕
         </button>
         <h2>Admin</h2>
-        <Link href={`/count/${date}/result`} className="admin-link" onClick={() => setAdminOpen(false)}>
+        <Link href="/count/result" className="admin-link" onClick={() => setAdminOpen(false)}>
           Final results
         </Link>
         <Link href="/admin/items" className="admin-link" onClick={() => setAdminOpen(false)}>

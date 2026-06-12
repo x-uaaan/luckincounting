@@ -12,6 +12,40 @@ const STAGES: { id: Stage; label: string }[] = [
   { id: "closing", label: "Closing" },
 ];
 
+// Per-category numeric columns shown in the admin Items table. "Loss" is
+// excluded entirely — its items are managed on /admin/loss instead.
+type NumericField = "per_bag_pcs" | "per_box_pcs" | "bag_size_g";
+
+const CATEGORY_COLUMNS: Record<string, { field: NumericField; label: string }[]> = {
+  Packaging: [
+    { field: "per_box_pcs", label: "Bag/ctn" },
+    { field: "per_bag_pcs", label: "Pcs/bag" },
+  ],
+  Syrup: [{ field: "bag_size_g", label: "ml" }],
+  "Solid Beverage": [
+    { field: "per_box_pcs", label: "Bag/ctn" },
+    { field: "bag_size_g", label: "g/bag" },
+  ],
+  "Coffee Bean": [
+    { field: "per_box_pcs", label: "Bag/ctn" },
+    { field: "bag_size_g", label: "g/bag" },
+  ],
+  Frozen: [
+    { field: "per_box_pcs", label: "Pcs/ctn" },
+    { field: "bag_size_g", label: "ml" },
+  ],
+  "Raw Material": [
+    { field: "per_box_pcs", label: "Box/ctn" },
+    { field: "bag_size_g", label: "ml/box" },
+  ],
+  "Dairy & Soda": [
+    { field: "per_bag_pcs", label: "/bag" },
+    { field: "per_box_pcs", label: "/ctn" },
+    { field: "bag_size_g", label: "Size" },
+  ],
+  Merch: [{ field: "per_box_pcs", label: "Pcs/ctn" }],
+};
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -51,11 +85,13 @@ export default function AdminItemsPage() {
     Record<string, { name: string; unit: string; appears_in: Stage[] }>
   >({});
 
-  const categories = Array.from(new Set(items.map((i) => i.category))).sort((a, b) => {
-    const aMin = Math.min(...items.filter((i) => i.category === a).map((i) => i.sort_order));
-    const bMin = Math.min(...items.filter((i) => i.category === b).map((i) => i.sort_order));
-    return aMin - bMin;
-  });
+  const categories = Array.from(new Set(items.map((i) => i.category)))
+    .filter((c) => c !== "Loss")
+    .sort((a, b) => {
+      const aMin = Math.min(...items.filter((i) => i.category === a).map((i) => i.sort_order));
+      const bMin = Math.min(...items.filter((i) => i.category === b).map((i) => i.sort_order));
+      return aMin - bMin;
+    });
 
   const draftFor = (category: string) =>
     newItemDrafts[category] ?? { name: "", unit: "", appears_in: [] as Stage[] };
@@ -120,7 +156,7 @@ export default function AdminItemsPage() {
           .filter((i) => i.category === category)
           .sort((a, b) => a.sort_order - b.sort_order);
         const draft = draftFor(category);
-        const isSyrup = category === "Syrup";
+        const columns = CATEGORY_COLUMNS[category] ?? [];
 
         return (
           <div key={category} className="card">
@@ -133,19 +169,10 @@ export default function AdminItemsPage() {
                 <thead>
                   <tr>
                     <th>Name</th>
-                    {isSyrup ? (
-                      <th>ml</th>
-                    ) : (
-                      <>
-                        <th>Unit</th>
-                        <th>/bag</th>
-                        <th>/box(B)</th>
-                        <th>/box(F)</th>
-                        <th>/box(C)</th>
-                        <th>Bag g</th>
-                        <th>Inv bag g</th>
-                      </>
-                    )}
+                    <th>Unit</th>
+                    {columns.map((col) => (
+                      <th key={col.field}>{col.label}</th>
+                    ))}
                     <th></th>
                   </tr>
                 </thead>
@@ -159,59 +186,20 @@ export default function AdminItemsPage() {
                           onChange={(e) => updateItem(item.id, { name: e.target.value })}
                         />
                       </td>
-                      {isSyrup ? (
-                        <td>
+                      <td>
+                        <input
+                          value={item.unit ?? ""}
+                          onChange={(e) => updateItem(item.id, { unit: e.target.value || null })}
+                        />
+                      </td>
+                      {columns.map((col) => (
+                        <td key={col.field}>
                           <NumberCell
-                            value={item.bag_size_g}
-                            onChange={(v) => updateItem(item.id, { bag_size_g: v })}
+                            value={item[col.field]}
+                            onChange={(v) => updateItem(item.id, { [col.field]: v })}
                           />
                         </td>
-                      ) : (
-                        <>
-                          <td>
-                            <input
-                              value={item.unit ?? ""}
-                              onChange={(e) => updateItem(item.id, { unit: e.target.value || null })}
-                            />
-                          </td>
-                          <td>
-                            <NumberCell
-                              value={item.per_bag_pcs}
-                              onChange={(v) => updateItem(item.id, { per_bag_pcs: v })}
-                            />
-                          </td>
-                          <td>
-                            <NumberCell
-                              value={item.per_box_pcs}
-                              onChange={(v) => updateItem(item.id, { per_box_pcs: v })}
-                            />
-                          </td>
-                          <td>
-                            <NumberCell
-                              value={item.front_per_box_pcs}
-                              onChange={(v) => updateItem(item.id, { front_per_box_pcs: v })}
-                            />
-                          </td>
-                          <td>
-                            <NumberCell
-                              value={item.closing_per_box_pcs}
-                              onChange={(v) => updateItem(item.id, { closing_per_box_pcs: v })}
-                            />
-                          </td>
-                          <td>
-                            <NumberCell
-                              value={item.bag_size_g}
-                              onChange={(v) => updateItem(item.id, { bag_size_g: v })}
-                            />
-                          </td>
-                          <td>
-                            <NumberCell
-                              value={item.inventory_bag_size_g}
-                              onChange={(v) => updateItem(item.id, { inventory_bag_size_g: v })}
-                            />
-                          </td>
-                        </>
-                      )}
+                      ))}
                       <td>
                         <div className="row-actions">
                           {confirmingId === item.id ? (

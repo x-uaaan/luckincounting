@@ -15,8 +15,8 @@ const STAGE_LABELS: Record<string, string> = {
   sheet2: "Final",
 };
 
-export default function ResultPage({ params }: { params: { date: string } }) {
-  useLoadDate(params.date);
+export default function ResultPage() {
+  useLoadDate();
 
   const record = useCountingStore((s) => s.record);
   const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
@@ -97,7 +97,7 @@ export default function ResultPage({ params }: { params: { date: string } }) {
           </div>
           {selfCheckWarnings.map((w, i) => (
             <div key={i} className="warning">
-              <Link href={`/count/${params.date}/${w.stage === "sheet2" ? "closing" : w.stage}`}>
+              <Link href={`/count/${w.stage === "sheet2" ? "closing" : w.stage}`}>
                 [{STAGE_LABELS[w.stage] ?? w.stage}]
               </Link>{" "}
               {w.message}

@@ -19,13 +19,13 @@
 
 ```
 Next.js app (Vercel)
-├── Counting flow (user)              — src/app/{page,count/[date]/*}
+├── Counting flow (user)              — src/app/{page,count/*}
 │   /                  → date selector, "Start counting"
-│   /count/[date]/back     → Stage 1 input
-│   /count/[date]/front    → Stage 2 input
-│   /count/[date]/expired  → Stage 3 input (Loss + Inventory + whipping cream calc, A.4)
-│   /count/[date]/closing  → Stage 4 input (incl. row×line+loose entry, A.5)
-│   /count/[date]/result   → Stage 5, Sheet2 read-only + Submit
+│   /count/back     → Stage 1 input
+│   /count/front    → Stage 2 input
+│   /count/expired  → Stage 3 input (Loss + Inventory + whipping cream calc, A.4)
+│   /count/closing  → Stage 4 input (incl. row×line+loose entry, A.5)
+│   /count/result   → Stage 5, Sheet2 read-only + Submit
 │
 ├── Admin panel                       — src/app/admin/*
 │   /admin            → dashboard
@@ -97,7 +97,7 @@ interface WhippingCreamCalc {
 - `total_weight` is the only field the user enters per variant — pumps, ml/pump, and tare weight are preset.
 - Computed per variant: `syrup_weight = pump_count * ml_per_pump`, `cream_weight = total_weight - syrup_weight - empty_canister_weight`.
 - `total_whipping_cream` (sum of `cream_weight` across all canisters/variants — cream only) feeds the Cream Loss `result` as the `total` input.
-- UI: on `/count/[date]/expired`, the Cream/Whipping Cream card has an "Add canister" control (disabled at 5); each canister row shows name + total weight input + computed cream weight, with a running cream-only sum displayed in the card header.
+- UI: on `/count/expired`, the Cream/Whipping Cream card has an "Add canister" control (disabled at 5); each canister row shows name + total weight input + computed cream weight, with a running cream-only sum displayed in the card header.
 
 ## A.5 Data model addition — Flexible loose counting, row × line + loose (NEW)
 
@@ -119,7 +119,7 @@ interface ClosingEntry {
 - Computed: `loose = (loose_rows ?? 0) * (loose_lines ?? 0) + (loose_extra ?? 0)`, then `loose_sum` derives from `loose` as before (per item type).
 - If `loose_rows`/`loose_lines`/`loose_extra` are all null, fall back to the existing single `loose` field (back-compat with simple entry).
 - Applies only to items whose `category` is Raw Material, Syrup, or Frozen; other categories keep the simple single-value `loose` field.
-- UI: on `/count/[date]/closing`, items in these categories show `rows × lines + loose` inputs with a live computed total instead of the single free-entry field.
+- UI: on `/count/closing`, items in these categories show `rows × lines + loose` inputs with a live computed total instead of the single free-entry field.
 
 ## A.6 Key cross-references / gotchas
 
@@ -130,7 +130,7 @@ interface ClosingEntry {
 
 ## A.6.1 Stage page layout — all items on one page (NEW, REVISED)
 
-Each counting stage page (`/count/[date]/back`, `/front`, `/expired`, `/closing`) displays **all items for that stage in a single scrollable page**, not one item per page/screen. This matches the original B.6 mobile card layout — confirmed as the intended design (no per-item navigation/pagination).
+Each counting stage page (`/count/back`, `/front`, `/expired`, `/closing`) displays **all items for that stage in a single scrollable page**, not one item per page/screen. This matches the original B.6 mobile card layout — confirmed as the intended design (no per-item navigation/pagination).
 
 - Items render as a **compact** stacked list of cards (grouped by category with collapsible headers per B.6). Each card should fit in just a few lines: a header row (item name + category/unit, with the item's computed total right-aligned in the same row) followed by one or two compact rows of small input/auto fields. Avoid the earlier large per-field block layout — it made each card too tall.
 - Every computed value (bag sum, box sum, loose total, whipping cream cream-weight/total, item total) updates **live** as the user types — no "calculate" button.
@@ -141,7 +141,7 @@ Each counting stage page (`/count/[date]/back`, `/front`, `/expired`, `/closing`
 
 ## A.6.2 Tab navigation, admin overlay, numeric input, autosave (NEW)
 
-- **Tab bar**: the 5 stages — Back, Front, Material Exp, Closing, Final — render as a persistent top tab bar. Switching tabs is **client-side only** (no route change / page reload); each tab's input state is preserved when switching away and back. (Implementation note: still keep `/count/[date]/{back,front,expired,closing,result}` as deep-linkable routes, but within a stage the active tab can change via client state without a full navigation.)
+- **Tab bar**: the 5 stages — Back, Front, Material Exp, Closing, Final — render as a persistent top tab bar. Switching tabs is **client-side only** (no route change / page reload); each tab's input state is preserved when switching away and back. (Implementation note: still keep `/count/{back,front,expired,closing,result}` as deep-linkable routes, but within a stage the active tab can change via client state without a full navigation.)
 - **Admin button**: pinned top-right of the tab bar on every page. Tapping it opens the Admin panel as an **overlay** (slide-in panel + backdrop) on top of the current tab — it does not navigate away or reload, so in-progress counting input is preserved underneath. Closing the overlay returns to the same tab/state.
 - **Numeric keyboard**: every count/weight input uses `inputmode="numeric"` (whole counts: rows, lines, loose, box count, open bags) or `inputmode="decimal"` (weights in g/ml where fractional values are possible) so mobile devices show the number pad, never the full keyboard.
 - **Autosave**: every input change is autosaved (debounced ~500ms), with a small "Saved" confirmation toast. This replaces/supplements the existing 60s interval autosave (A.2 store) — autosave should fire on both a debounce-after-edit AND the periodic interval.
@@ -150,7 +150,7 @@ Each counting stage page (`/count/[date]/back`, `/front`, `/expired`, `/closing`
 ## A.6.3 Minimal-chrome UI conventions (NEW)
 
 - **No per-page titles**: stage panels no longer show a `1. Back` / `2. Front` style header — the active tab in the topbar is the only page identifier.
-- **No date in UI**: the date is not displayed anywhere in the app UI; it exists only as the record's file/record name (e.g. the daily count record date), consistent with `/count/[date]/...` routing.
+- **No date in UI or routes**: the date is not displayed anywhere in the app UI and is not part of the `/count/*` routes either — `/count/back`, `/count/front`, etc. always resolve to today's record (`todayYYMMDD()` in `src/lib/date.ts`, used by `useLoadDate()`). The date still exists only as the record's file/record name internally.
 - **Sticky topbar**: the tab bar + Admin button form a fixed topbar above the scrollable content area, always visible while scrolling within a stage.
 - **Minimize parentheses / explanatory text**: standing style rule — avoid parenthetical labels and asides (e.g. "(g)", "(auto)", "(computed = rows × lines + loose)", "(2 of 5 used)"). Use plain short labels (units folded into the value, e.g. "1020 g") and compact separators like "·" or "/" instead (e.g. "+ Add canister · 2/5"). Goal: fewer messages, less visual clutter.
 - **No footer descriptions**: the long explanatory paragraphs previously shown at the bottom of each panel are removed. Formula/behavior documentation lives in countingflow.md/appflow.md, not in the UI.
@@ -167,16 +167,16 @@ Each counting stage page (`/count/[date]/back`, `/front`, `/expired`, `/closing`
 
 ## A.6.4 Admin overlay scope (REVISED)
 
-- The Admin overlay (`Topbar.tsx` slide-in panel, on `/count/[date]/*`) does **not** show per-item details or calc factors inline — it's a simple list of links: "Final results", "Items", "Containers", "Records", "Approvals", "Settings".
+- The Admin overlay (`Topbar.tsx` slide-in panel, on `/count/*`) does **not** show per-item details or calc factors inline — it's a simple list of links: "Final results", "Items", "Containers", "Records", "Approvals", "Settings".
 - Item-level configuration (the `.const` factors referenced in §A.6.5) and container tares are managed on the dedicated `/admin/items` and `/admin/containers` pages (§A.9), reached via the overlay or `/admin`.
 
 ## A.9 Admin Items/Containers CRUD data flow (NEW)
 
 - **`useItemsStore` (Zustand)** holds `items: Item[]` and `containers: Container[]`, the single source of truth consumed by both the counting flow (`useCountingStore`, stage pages) and the admin CRUD pages. A client-only `<ItemsStoreInit />` (mounted in the root layout) calls `init()` once on app load.
 - **`itemsRepo.ts`** is Supabase-first: `isSupabaseConfigured()` checks `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`. If configured, `init()` reads from the `items`/`containers` tables (bootstrapping them from `seedItems`/`containers.ts` if empty) and all CRUD writes go through Supabase. If not configured (current dev environment), `init()` falls back to `localStorage` (`luckin_items` / `luckin_containers`), seeded from `seedItems.ts`/`containers.ts` on first run.
-- **`/admin/items`**: one CRUD table per category, columns Name / Unit / `/bag` / `/box(Back)` / `/box(Front)` / `/box(Closing)` / Bag g / Inv bag g / Delete (two-step confirm). Loss rate and default Container are not editable from this table (still set in `seedItems.ts`). Per-category "+ Add item" form (name, unit, `appears_in` stage checkboxes); new items get a generated `id` and all other calc factors default to `null`/`"none"`/`false` and are edited inline afterward.
-- **"Dairy & Soda" category**: `soda_water`, `cream_charger`, `whipping_cream`, `cream_cheese_premix`, `cream`, and `soda_loss` share this category (consolidated from Packaging/Coffee Bean/Dairy/Loss), with contiguous `sort_order` 501–506 placed right after Merch and before Loss so the category label renders once on stage pages.
-- **Syrup category (admin table)**: only one numeric column, "ml" (maps to `bag_size_g`), is shown/editable — Unit/`/bag`/`/box(*)`/Inv bag g columns are hidden for this category. All Syrup items now have `unit: "ml"` (default 1000ml, except Caramel Syrup 500 and Pistachio Sauce 300).
+- **`/admin/items`**: one CRUD table per category (Name, Unit, Delete + two-step confirm), with **category-specific numeric columns** defined by `CATEGORY_COLUMNS` in `admin/items/page.tsx`: Packaging = Bag/ctn (`per_box_pcs`) + Pcs/bag (`per_bag_pcs`); Syrup = ml (`bag_size_g`); Solid Beverage / Coffee Bean = Bag/ctn (`per_box_pcs`) + g/bag (`bag_size_g`); Frozen = Pcs/ctn (`per_box_pcs`) + ml (`bag_size_g`); Raw Material = Box/ctn (`per_box_pcs`) + ml/box (`bag_size_g`); Dairy & Soda = `/bag` (`per_bag_pcs`) + `/ctn` (`per_box_pcs`) + Size (`bag_size_g`); Merch = Pcs/ctn (`per_box_pcs`). `front_per_box_pcs`/`closing_per_box_pcs`/`inventory_bag_size_g`/Loss rate/default Container are not shown on this table (still set in `seedItems.ts`). The **"Loss" category is excluded entirely** from `/admin/items` — managed via `/admin/loss` instead. Per-category "+ Add item" form (name, unit, `appears_in` stage checkboxes); new items get a generated `id` and all other calc factors default to `null`/`"none"`/`false` and are edited inline afterward.
+- **"Dairy & Soda" category**: `soda_water`, `cream_charger`, `whipping_cream`, `cream_cheese_premix`, `cream`, and `soda_loss` share this category (consolidated from Packaging/Coffee Bean/Dairy/Loss), with contiguous `sort_order` 502–507. All Syrup items now have `unit: "ml"` (default 1000ml, except Caramel Syrup 500 and Pistachio Sauce 300).
+- **Merch**: `coconut_keychain.per_box_pcs = 50`; new item `coconut_plushie` (Pcs/ctn = 36, `appears_in: ["back","closing","sheet2"]`). Merch is now the last category card on `/admin/items`, with `sort_order` 508–509 (after Dairy & Soda's 502–507).
 - **"+ Add item"**: the per-category add form no longer has a "Final" checkbox — every newly added item automatically gets `"sheet2"` appended to `appears_in` (in addition to whichever of Back/Front/Mat. Exp/Closing are checked), so new items always show up on the Final (Sheet2) sheet.
 - **`/admin/loss`** (new page, linked from `/admin` and the Topbar overlay): lists every item with `"expired"` in `appears_in` (Solid Beverage, Dairy & Soda, and Loss-category items), with name, category, and an editable `loss_rate` fraction.
 - **`/admin/containers`**: single CRUD table (Name, Tare g, Delete) + "+ Add container" form.
@@ -473,11 +473,11 @@ Admin reviews Sheet2
 | Route | Access | Description |
 |-------|--------|-------------|
 | `/` | User + Admin | Date selector, start counting |
-| `/count/[date]/back` | User + Admin | Stage 1 input |
-| `/count/[date]/front` | User + Admin | Stage 2 input |
-| `/count/[date]/expired` | User + Admin | Stage 3 input (Loss + Inventory) |
-| `/count/[date]/closing` | User + Admin | Stage 4 input |
-| `/count/[date]/result` | User + Admin | Stage 5 — Sheet2 read-only + Submit |
+| `/count/back` | User + Admin | Stage 1 input |
+| `/count/front` | User + Admin | Stage 2 input |
+| `/count/expired` | User + Admin | Stage 3 input (Loss + Inventory) |
+| `/count/closing` | User + Admin | Stage 4 input |
+| `/count/result` | User + Admin | Stage 5 — Sheet2 read-only + Submit |
 | `/admin` | Admin only | Dashboard |
 | `/admin/items` | Admin only | Item CRUD (name, unit, calc factors, appears_in, container) |
 | `/admin/containers` | Admin only | Container CRUD (name, tare_g) |
@@ -509,5 +509,7 @@ Admin reviews Sheet2
 | 2026-06-12 | Implemented the revised data model end-to-end: `types.ts`/`calculations.ts`/`containers.ts`/`seedItems.ts` (60 items)/`useCountingStore.ts` updated per §A.6–A.8; `pineapple_syrup` removed; new `front_per_box_pcs` field added (Front box-pcs differs from Back for several shared items, e.g. Velvet Base 12 vs 2, Cup Sleeve 2000 vs 200). Ported `mockups/dark_theme.html` into `globals.css` (`.app-dark`), rebuilt the topbar as `Topbar.tsx` (sticky tabs + slide-in Admin overlay), and rewrote all 5 stage pages (back/front/expired/closing/result) as single-page card lists matching the mockup. Removed `/admin/items` (§A.6.4) and its link from `/admin`. Updated `supabase/schema.sql` to match the new `items`/`daily_records` columns | Claude |
 | 2026-06-12 | Verified the above with `npm run build` and a `npm run dev` walkthrough (Back/Front calc rows, Material Expired cream canister calc + Pandan warning + container tares, Closing loose-grid and Whipping Cream's `closing_inventory_formula` consuming Cream's loss result, Final 51-row Sheet2 table, Admin overlay). Fixed a pre-existing `tsc`/build error in `src/lib/supabase/server.ts` by typing the cookie `set`/`remove` `options` params as `CookieOptions` | Claude |
 | 2026-06-12 | Global dark theme + Admin Items/Containers CRUD (§A.9): moved `.app-dark` to `<body>` in the root layout so `/`, `/admin*` are dark too; rewrote home page and all `/admin/*` pages (new `AdminHeader` component). Added `containers` table to `supabase/schema.sql`, new `itemsRepo.ts` (Supabase-first data access) and `useItemsStore.ts` (Zustand, localStorage+seed fallback when Supabase isn't configured), with `<ItemsStoreInit />` mounted in the root layout. `useCountingStore.ts` and all 5 stage pages now read items/containers from `useItemsStore` instead of static `seedItems`/`containers.ts` imports (those files remain as seed defaults only). New `/admin/items` (per-category CRUD table: name/unit/calc factors/appears_in/default container, add/delete) and `/admin/containers` (name/tare_g CRUD) pages, linked from `/admin` and the Topbar admin overlay. Added `.admin-table`/`.row-actions`/`.add-row-form`/`.home-link`/`.admin-card` etc. to `globals.css`. Verified via `npm run build` and a dev walkthrough: editing an item's `per_box_pcs` on `/admin/items` updates the Back stage's `.const` value immediately; editing a container's `tare_g` on `/admin/containers` updates Material Expired's tare/formula check immediately; edits persist to `localStorage` | Claude |
-| 2026-06-12 | `/admin/items` table: removed the Loss rate and default Container columns (still set via `seedItems.ts`, not admin-editable). Created a new "Dairy & Soda" category in `seedItems.ts` consolidating `soda_water`, `cream_charger`, `whipping_cream`, `cream_cheese_premix`, `cream`, `soda_loss` (previously split across Packaging/Coffee Bean/Dairy/Loss), with new contiguous `sort_order` 501–506 placed after Merch and before Loss so the category renders as a single block on stage pages and `/admin/items`. Verified on `/count/[date]/back` and `/admin/items` via dev server (after clearing `localStorage` so the new seed data reloads) | Claude |
+| 2026-06-12 | `/admin/items` table: removed the Loss rate and default Container columns (still set via `seedItems.ts`, not admin-editable). Created a new "Dairy & Soda" category in `seedItems.ts` consolidating `soda_water`, `cream_charger`, `whipping_cream`, `cream_cheese_premix`, `cream`, `soda_loss` (previously split across Packaging/Coffee Bean/Dairy/Loss), with new contiguous `sort_order` 501–506 placed after Merch and before Loss so the category renders as a single block on stage pages and `/admin/items`. Verified on `/count/back` and `/admin/items` via dev server (after clearing `localStorage` so the new seed data reloads) | Claude |
 | 2026-06-12 | Syrup items in `seedItems.ts` now use `unit: "ml"` (1000ml default, Caramel 500, Pistachio 300); `/admin/items` shows a single "ml" column (`bag_size_g`) for the Syrup category instead of the full Unit/`/bag`/`/box`/Bag g/Inv bag g set. Fixed `cream_charger.per_box_pcs` 360→400 (1 ctn = 40 sleeves × 10 pcs). Removed the "Final" checkbox from "+ Add item" — new items now always get `"sheet2"` appended to `appears_in` automatically. Added new `/admin/loss` page (linked from `/admin` and the Topbar overlay) listing all items with `"expired"` in `appears_in` plus an editable `loss_rate` column. Verified via dev server walkthrough | Claude |
+| 2026-06-12 | Reworked `/admin/items` to show category-specific numeric columns via a new `CATEGORY_COLUMNS` config (§A.9): Packaging (Bag/ctn, Pcs/bag), Syrup (ml), Solid Beverage & Coffee Bean (Bag/ctn, g/bag), Frozen (Pcs/ctn, ml), Raw Material (Box/ctn, ml/box), Dairy & Soda (`/bag`, `/ctn`, Size), Merch (Pcs/ctn); the "Loss" category card is no longer shown on `/admin/items` (use `/admin/loss`). In `seedItems.ts`: set `coconut_keychain.per_box_pcs = 50`, added new Merch item `coconut_plushie` (Pcs/ctn = 36, appears in Back/Closing/Final, `sort_order: 501`), and shifted the "Dairy & Soda" block from `sort_order` 501–506 to 502–507 to make room. Verified via dev server: per-category columns render correctly, "Loss" card is gone from `/admin/items` (still 15 rows on `/admin/loss`), Coconut Plushie appears on `/count/back`, and category labels remain non-duplicated | Claude |
+| 2026-06-12 | Moved Merch to the last category card on `/admin/items` by renumbering `coconut_keychain`/`coconut_plushie` `sort_order` from 500/501 to 508/509 (after Dairy & Soda's 502–507). Removed the date segment from counting routes: `src/app/count/[date]/*` → `src/app/count/*` (back/front/expired/closing/result + layout), `Topbar.tsx` no longer takes a `date` prop and links to `/count/{stage}`, and `useLoadDate()` (in `StageHooks.ts`) now takes no argument and resolves the record date internally via new `src/lib/date.ts` (`todayYYMMDD()`). Home page "Start counting" link now points to `/count/back` with no date suffix in the text or URL. Verified via dev server: `/`, `/count/back`, `/count/result`, and `/admin/items` (Merch last) all render correctly | Claude |

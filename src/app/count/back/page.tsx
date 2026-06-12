@@ -4,8 +4,8 @@ import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 
-export default function BackPage({ params }: { params: { date: string } }) {
-  useLoadDate(params.date);
+export default function BackPage() {
+  useLoadDate();
 
   const record = useCountingStore((s) => s.record);
   const setBack = useCountingStore((s) => s.setBack);
