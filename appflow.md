@@ -29,19 +29,23 @@ Next.js app (Vercel)
 │
 ├── Admin panel                       — src/app/admin/*
 │   /admin            → dashboard
-│   /admin/items      → CRUD item list
+│   /admin/items      → item CRUD (name, unit, calc factors, appears_in, container)
+│   /admin/containers → container CRUD (name, tare_g)
 │   /admin/records    → historical records, re-open
 │   /admin/approvals  → pending approvals queue
 │   /admin/settings   → loss rates, bag sizes, Drive folder
 │
 └── Shared core
     ├── src/store/useCountingStore.ts  — Zustand store, stage inputs, autosave (60s)
+    ├── src/store/useItemsStore.ts     — Zustand store, items/containers (§A.9)
+    ├── src/lib/itemsRepo.ts           — Supabase-first data access for items/containers (§A.9)
     ├── src/lib/calculations.ts        — Back/Front/Expired/Closing/Sheet2 formulas
-    ├── src/lib/types.ts               — Item, DailyRecord, stage entry types
+    ├── src/lib/types.ts               — Item, Container, DailyRecord, stage entry types
     ├── src/lib/xlsxExport.ts          — generates Sheet2-only .xlsx (YYMMDD.xlsx)
     ├── src/lib/supabase/{client,server}.ts
-    ├── src/data/seedItems.ts          — seed item list
-    └── src/components/{StageTabs,StageHooks}
+    ├── src/data/seedItems.ts          — seed item defaults (60 items, §A.8), consumed by useItemsStore.init()
+    ├── src/data/containers.ts         — seed container-tare presets (§A.6), consumed by useItemsStore.init()
+    └── src/components/{Topbar,StageHooks,AdminHeader,ItemsStoreInit}
 
 External:
     Supabase   — Postgres DB + Auth (admin/user roles)
@@ -53,13 +57,18 @@ External:
 | Area | Status |
 |------|--------|
 | Project scaffold (Next.js, Tailwind, Supabase, xlsx, Zustand) | done |
-| Item data model (`types.ts`) | done — matches §B.3, needs A.4/A.5 extensions |
-| Seed items (`seedItems.ts`) | done (375 lines) |
-| Calculations (`calculations.ts`) | scaffolded (155 lines) — needs verification against countingflow.md cross-references (Cream/Milk linkage, Pandan warning), plus new whipping cream + row×line formulas |
-| Store (`useCountingStore.ts`) | scaffolded (153 lines) |
-| Stage page UIs (back/front/expired/closing/result) | scaffolded, need full input tables per §B.6, plus whipping cream calculator UI (expired) and row×line+loose UI (closing) |
-| Admin pages | scaffolded, need CRUD logic |
-| Supabase schema (`supabase/schema.sql`) | exists, needs review |
+| Item data model (`types.ts`) | done — incl. `front_per_box_pcs`, `closing_per_box_pcs`, `inventory_bag_size_g`, `default_container_id`, `closing_inventory_formula`, `loose_grid`, `Container`, `WhippingCreamVariant`/`Calc` |
+| Seed items (`seedItems.ts`) | done — full 60-item list per §A.8 (50 Back, 17 Front, 51 Closing/Sheet2, 15 Loss-only); now used only as `useItemsStore` seed defaults |
+| Containers (`containers.ts`) | done — 7 presets per §A.6; now used only as `useItemsStore` seed defaults |
+| Items/containers store (`useItemsStore.ts`, `itemsRepo.ts`) | done — Supabase-first, falls back to localStorage + seed defaults (§A.9) |
+| Calculations (`calculations.ts`) | done — Back/Front/Loss (container-tare + whipping cream)/Closing (inventory formulas + row×line)/Sheet2 + `round1` |
+| Store (`useCountingStore.ts`) | done — reads items/containers from `useItemsStore` (not static imports); `material_inventory` removed, Loss/Closing cross-references (Cream↔Whipping Cream, Milk↔Milk-Cheese) wired |
+| Global dark theme (`globals.css` `.app-dark`) | done — applied site-wide on `<body>` (root layout), ported from `mockups/dark_theme.html` |
+| Stage page UIs (back/front/expired/closing/result) | done — single-page card lists, whipping cream calculator, row×line+loose grid, container selects, Sheet2 table with `round1`; items/containers read from `useItemsStore` |
+| Topbar + Admin overlay (`Topbar.tsx`) | done — sticky tabs + slide-in overlay (Final results/Items/Containers/Records/Approvals/Settings) |
+| Admin pages | done — `/admin/items` and `/admin/containers` full CRUD (§A.9); records/approvals/settings still scaffolded, need CRUD logic |
+| Supabase schema (`supabase/schema.sql`) | updated — `items`/`containers`/`daily_records` match current data model |
+| Autosave toast / debounce (§A.6.2) | not started |
 | Google Drive integration | not started |
 | Deployment to Vercel | not started |
 
@@ -158,8 +167,21 @@ Each counting stage page (`/count/[date]/back`, `/front`, `/expired`, `/closing`
 
 ## A.6.4 Admin overlay scope (REVISED)
 
-- The Admin overlay does **not** show per-item details or calc factors (full pack/container weights, per-bag/per-box pcs, pump settings, etc.) — that editing surface was removed as out of scope for the mobile counting app's admin overlay.
-- Admin overlay is a simple list of links: "Final results", "Records", "Approvals", "Settings". Item-level configuration (the data referenced by §A.6.5's `.const` factors) is managed elsewhere (e.g. a separate `/admin/items` desktop screen per §B routes), not in this overlay.
+- The Admin overlay (`Topbar.tsx` slide-in panel, on `/count/[date]/*`) does **not** show per-item details or calc factors inline — it's a simple list of links: "Final results", "Items", "Containers", "Records", "Approvals", "Settings".
+- Item-level configuration (the `.const` factors referenced in §A.6.5) and container tares are managed on the dedicated `/admin/items` and `/admin/containers` pages (§A.9), reached via the overlay or `/admin`.
+
+## A.9 Admin Items/Containers CRUD data flow (NEW)
+
+- **`useItemsStore` (Zustand)** holds `items: Item[]` and `containers: Container[]`, the single source of truth consumed by both the counting flow (`useCountingStore`, stage pages) and the admin CRUD pages. A client-only `<ItemsStoreInit />` (mounted in the root layout) calls `init()` once on app load.
+- **`itemsRepo.ts`** is Supabase-first: `isSupabaseConfigured()` checks `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`. If configured, `init()` reads from the `items`/`containers` tables (bootstrapping them from `seedItems`/`containers.ts` if empty) and all CRUD writes go through Supabase. If not configured (current dev environment), `init()` falls back to `localStorage` (`luckin_items` / `luckin_containers`), seeded from `seedItems.ts`/`containers.ts` on first run.
+- **`/admin/items`**: one CRUD table per category, columns Name / Unit / `/bag` / `/box(Back)` / `/box(Front)` / `/box(Closing)` / Bag g / Inv bag g / Delete (two-step confirm). Loss rate and default Container are not editable from this table (still set in `seedItems.ts`). Per-category "+ Add item" form (name, unit, `appears_in` stage checkboxes); new items get a generated `id` and all other calc factors default to `null`/`"none"`/`false` and are edited inline afterward.
+- **"Dairy & Soda" category**: `soda_water`, `cream_charger`, `whipping_cream`, `cream_cheese_premix`, `cream`, and `soda_loss` share this category (consolidated from Packaging/Coffee Bean/Dairy/Loss), with contiguous `sort_order` 501–506 placed right after Merch and before Loss so the category label renders once on stage pages.
+- **Syrup category (admin table)**: only one numeric column, "ml" (maps to `bag_size_g`), is shown/editable — Unit/`/bag`/`/box(*)`/Inv bag g columns are hidden for this category. All Syrup items now have `unit: "ml"` (default 1000ml, except Caramel Syrup 500 and Pistachio Sauce 300).
+- **"+ Add item"**: the per-category add form no longer has a "Final" checkbox — every newly added item automatically gets `"sheet2"` appended to `appears_in` (in addition to whichever of Back/Front/Mat. Exp/Closing are checked), so new items always show up on the Final (Sheet2) sheet.
+- **`/admin/loss`** (new page, linked from `/admin` and the Topbar overlay): lists every item with `"expired"` in `appears_in` (Solid Beverage, Dairy & Soda, and Loss-category items), with name, category, and an editable `loss_rate` fraction.
+- **`/admin/containers`**: single CRUD table (Name, Tare g, Delete) + "+ Add container" form.
+- Edits write through `updateItem`/`updateContainer` etc., which update Zustand state, mirror to `localStorage`, and (if Supabase configured) upsert remotely — stage pages re-render immediately since they read `items`/`containers` from the same store.
+- `seedItems.ts` and `containers.ts` are now **seed defaults only**, consumed exclusively by `useItemsStore.init()`.
 
 ## A.7 Working agreement
 
@@ -231,10 +253,16 @@ Each stage shows:
   unit: string | null,        // display unit, e.g. "pcs", "bag", "bottle", "box", "pack", "can", "g"
   per_bag_pcs: number | null, // null if "-" (whole unit)
   per_box_pcs: number | null,
-  closing_per_box_pcs: number | null, // (NEW) Closing-stage storage-box pcs, may differ from per_box_pcs
-  bag_size_g: number | null,  // for powder/liquid closing conversion
+  front_per_box_pcs: number | null,   // Front-stage box pcs, may differ from per_box_pcs (§A.8 finding)
+  closing_per_box_pcs: number | null, // Closing-stage storage-box pcs, may differ from per_box_pcs
+  bag_size_g: number | null,  // for powder/liquid closing loose_sum conversion (loose / bag_size_g)
+  inventory_bag_size_g: number | null, // bag size used by closing_inventory_formula; falls back to bag_size_g
   loss_formula: "multiply" | "subtract" | "add" | "none",
   loss_rate: number | null,
+  loss_subtract_ml: number | null,    // for "subtract" (Cream)
+  loss_addend_item_id: string | null, // for "add" (Milk <- Milk-Cheese)
+  loose_grid: boolean,         // row x line + loose entry (Raw Material/Syrup/Frozen, §A.5)
+  closing_input_type: "weight" | "count" | "sleeves",
 
   // (NEW, countingflow.md §A.6) Material Expired container-tare selector — only set
   // for Loss items that have a container preset. null/empty => no container subtraction.
@@ -451,7 +479,8 @@ Admin reviews Sheet2
 | `/count/[date]/closing` | User + Admin | Stage 4 input |
 | `/count/[date]/result` | User + Admin | Stage 5 — Sheet2 read-only + Submit |
 | `/admin` | Admin only | Dashboard |
-| `/admin/items` | Admin only | CRUD items |
+| `/admin/items` | Admin only | Item CRUD (name, unit, calc factors, appears_in, container) |
+| `/admin/containers` | Admin only | Container CRUD (name, tare_g) |
 | `/admin/records` | Admin only | Historical records |
 | `/admin/approvals` | Admin only | Pending approvals queue |
 | `/admin/settings` | Admin only | Drive folder, loss rates |
@@ -477,3 +506,8 @@ Admin reviews Sheet2
 | 2026-06-12 | Added `unit: string | null` field to Item data model (§B.3, types.ts) and set it on all 22 items in `seedItems.ts` per the user's master unit list (e.g. matcha=bag, ceylon_black_tea=g, whipping_cream=box, uht_milk=pack); items with no match in the list (chocolate, cream/milk cheese-premix rows, milk, cream, pineapple_syrup) left as `unit: null` | Claude |
 | 2026-06-12 | Re-derived flow from `Counting (2).xlsx` (countingflow.md §A.6–A.8): Material Expired is now Loss-only with a container-tare selector (new `Container` type, `default_container_id` on Item, `material_loss.container_id`/`gross_weight` on DailyRecord); the former Material Expired Inventory section is merged into Closing via new `closing_inventory_formula` on Item and `under_cabinet`/`non_coffee` fields on `closing` entries; `material_inventory` removed from DailyRecord. Updated §B.2 stage architecture and §B.4 calculation rules accordingly. (Code/seedItems/mockup updates deferred to a follow-up pass) | Claude |
 | 2026-06-12 | Removed "Souflle Syrup" from §A.8 item list (not part of this app's item set; Pineapple Syrup remains absent per `Counting (2).xlsx`) — Back is now 50 items, Closing 51 (Back + Whipping Cream). Added Sheet2/Final display rule: round to 1 decimal place for display only, full precision retained internally (§B.4) | Claude |
+| 2026-06-12 | Implemented the revised data model end-to-end: `types.ts`/`calculations.ts`/`containers.ts`/`seedItems.ts` (60 items)/`useCountingStore.ts` updated per §A.6–A.8; `pineapple_syrup` removed; new `front_per_box_pcs` field added (Front box-pcs differs from Back for several shared items, e.g. Velvet Base 12 vs 2, Cup Sleeve 2000 vs 200). Ported `mockups/dark_theme.html` into `globals.css` (`.app-dark`), rebuilt the topbar as `Topbar.tsx` (sticky tabs + slide-in Admin overlay), and rewrote all 5 stage pages (back/front/expired/closing/result) as single-page card lists matching the mockup. Removed `/admin/items` (§A.6.4) and its link from `/admin`. Updated `supabase/schema.sql` to match the new `items`/`daily_records` columns | Claude |
+| 2026-06-12 | Verified the above with `npm run build` and a `npm run dev` walkthrough (Back/Front calc rows, Material Expired cream canister calc + Pandan warning + container tares, Closing loose-grid and Whipping Cream's `closing_inventory_formula` consuming Cream's loss result, Final 51-row Sheet2 table, Admin overlay). Fixed a pre-existing `tsc`/build error in `src/lib/supabase/server.ts` by typing the cookie `set`/`remove` `options` params as `CookieOptions` | Claude |
+| 2026-06-12 | Global dark theme + Admin Items/Containers CRUD (§A.9): moved `.app-dark` to `<body>` in the root layout so `/`, `/admin*` are dark too; rewrote home page and all `/admin/*` pages (new `AdminHeader` component). Added `containers` table to `supabase/schema.sql`, new `itemsRepo.ts` (Supabase-first data access) and `useItemsStore.ts` (Zustand, localStorage+seed fallback when Supabase isn't configured), with `<ItemsStoreInit />` mounted in the root layout. `useCountingStore.ts` and all 5 stage pages now read items/containers from `useItemsStore` instead of static `seedItems`/`containers.ts` imports (those files remain as seed defaults only). New `/admin/items` (per-category CRUD table: name/unit/calc factors/appears_in/default container, add/delete) and `/admin/containers` (name/tare_g CRUD) pages, linked from `/admin` and the Topbar admin overlay. Added `.admin-table`/`.row-actions`/`.add-row-form`/`.home-link`/`.admin-card` etc. to `globals.css`. Verified via `npm run build` and a dev walkthrough: editing an item's `per_box_pcs` on `/admin/items` updates the Back stage's `.const` value immediately; editing a container's `tare_g` on `/admin/containers` updates Material Expired's tare/formula check immediately; edits persist to `localStorage` | Claude |
+| 2026-06-12 | `/admin/items` table: removed the Loss rate and default Container columns (still set via `seedItems.ts`, not admin-editable). Created a new "Dairy & Soda" category in `seedItems.ts` consolidating `soda_water`, `cream_charger`, `whipping_cream`, `cream_cheese_premix`, `cream`, `soda_loss` (previously split across Packaging/Coffee Bean/Dairy/Loss), with new contiguous `sort_order` 501–506 placed after Merch and before Loss so the category renders as a single block on stage pages and `/admin/items`. Verified on `/count/[date]/back` and `/admin/items` via dev server (after clearing `localStorage` so the new seed data reloads) | Claude |
+| 2026-06-12 | Syrup items in `seedItems.ts` now use `unit: "ml"` (1000ml default, Caramel 500, Pistachio 300); `/admin/items` shows a single "ml" column (`bag_size_g`) for the Syrup category instead of the full Unit/`/bag`/`/box`/Bag g/Inv bag g set. Fixed `cream_charger.per_box_pcs` 360→400 (1 ctn = 40 sleeves × 10 pcs). Removed the "Final" checkbox from "+ Add item" — new items now always get `"sheet2"` appended to `appears_in` automatically. Added new `/admin/loss` page (linked from `/admin` and the Topbar overlay) listing all items with `"expired"` in `appears_in` plus an editable `loss_rate` column. Verified via dev server walkthrough | Claude |

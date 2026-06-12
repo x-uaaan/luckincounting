@@ -4,17 +4,18 @@ import type {
   BackEntry,
   FrontEntry,
   MaterialLossEntry,
-  MaterialInventoryEntry,
   ClosingEntry,
+  WhippingCreamCalc,
+  ValidationWarning,
 } from "@/lib/types";
-import { seedItems } from "@/data/seedItems";
+import { useItemsStore } from "@/store/useItemsStore";
 import {
   calcBack,
   calcFront,
   calcMaterialLoss,
-  calcMaterialInventory,
   calcClosing,
   calcSheet2,
+  runSelfCheck,
 } from "@/lib/calculations";
 
 function emptyRecord(date: string): DailyRecord {
@@ -24,7 +25,6 @@ function emptyRecord(date: string): DailyRecord {
     back: {},
     front: {},
     material_loss: {},
-    material_inventory: {},
     closing: {},
     sheet2: {},
     approved_by: null,
@@ -36,20 +36,33 @@ function emptyRecord(date: string): DailyRecord {
 interface CountingState {
   date: string | null;
   record: DailyRecord | null;
+  selfCheckWarnings: ValidationWarning[];
+  selfCheckRan: boolean;
 
   loadDate: (date: string) => void;
+  runSelfCheck: () => void;
 
   setBack: (itemId: string, partial: Pick<BackEntry, "open_bags" | "box_count">) => void;
   setFront: (itemId: string, partial: Pick<FrontEntry, "box_count">) => void;
   setMaterialLoss: (
     itemId: string,
-    partial: Pick<MaterialLossEntry, "total_volume" | "rate_value">
+    partial: Pick<MaterialLossEntry, "container_id" | "gross_weight" | "rate_value"> & {
+      whipping_cream?: WhippingCreamCalc;
+    }
   ) => void;
-  setMaterialInventory: (
+  setClosing: (
     itemId: string,
-    partial: Pick<MaterialInventoryEntry, "under_cabinet" | "non_coffee">
+    partial: Pick<
+      ClosingEntry,
+      | "under_cabinet"
+      | "non_coffee"
+      | "loose_rows"
+      | "loose_lines"
+      | "loose_extra"
+      | "loose"
+      | "box_count"
+    >
   ) => void;
-  setClosing: (itemId: string, partial: Pick<ClosingEntry, "loose" | "box_count">) => void;
 
   recomputeSheet2: () => void;
 }
@@ -57,16 +70,26 @@ interface CountingState {
 export const useCountingStore = create<CountingState>((set, get) => ({
   date: null,
   record: null,
+  selfCheckWarnings: [],
+  selfCheckRan: false,
 
   loadDate: (date) => {
     // TODO: replace with Supabase fetch; falls back to a fresh draft.
-    set({ date, record: emptyRecord(date) });
+    set({ date, record: emptyRecord(date), selfCheckWarnings: [], selfCheckRan: false });
+  },
+
+  runSelfCheck: () => {
+    const { record } = get();
+    if (!record) return;
+    const { items } = useItemsStore.getState();
+    set({ selfCheckWarnings: runSelfCheck(record, items), selfCheckRan: true });
   },
 
   setBack: (itemId, partial) => {
     const { record } = get();
     if (!record) return;
-    const item = seedItems.find((i) => i.id === itemId);
+    const { items } = useItemsStore.getState();
+    const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
     const entry = calcBack(item, partial);
@@ -77,7 +100,8 @@ export const useCountingStore = create<CountingState>((set, get) => ({
   setFront: (itemId, partial) => {
     const { record } = get();
     if (!record) return;
-    const item = seedItems.find((i) => i.id === itemId);
+    const { items } = useItemsStore.getState();
+    const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
     const entry = calcFront(item, partial);
@@ -88,7 +112,8 @@ export const useCountingStore = create<CountingState>((set, get) => ({
   setMaterialLoss: (itemId, partial) => {
     const { record } = get();
     if (!record) return;
-    const item = seedItems.find((i) => i.id === itemId);
+    const { items, containers } = useItemsStore.getState();
+    const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
     // "add" formula items (e.g. Milk) depend on another item's Loss result
@@ -97,38 +122,50 @@ export const useCountingStore = create<CountingState>((set, get) => ({
         ? record.material_loss[item.loss_addend_item_id]?.result ?? null
         : null;
 
-    const entry = calcMaterialLoss(item, partial, addendResult);
-    set({
-      record: { ...record, material_loss: { ...record.material_loss, [itemId]: entry } },
-    });
-  },
+    const entry = calcMaterialLoss(item, partial, { addendResult, containers });
+    const material_loss = { ...record.material_loss, [itemId]: entry };
 
-  setMaterialInventory: (itemId, partial) => {
-    const { record } = get();
-    if (!record) return;
-    const item = seedItems.find((i) => i.id === itemId);
-    if (!item) return;
+    // "add" formula items consuming this item's result (e.g. Milk <- Milk-Cheese) recompute
+    const dependent = items.find((i) => i.loss_addend_item_id === itemId);
+    if (dependent) {
+      const depEntry = record.material_loss[dependent.id];
+      if (depEntry) {
+        material_loss[dependent.id] = calcMaterialLoss(dependent, depEntry, {
+          addendResult: entry.result,
+          containers,
+        });
+      }
+    }
 
-    // Whipping Cream subtracts the Cream-row canister result (E-06)
-    const creamLossResult =
-      itemId === "whipping_cream" ? record.material_loss["cream"]?.result ?? null : null;
+    set({ record: { ...record, material_loss } });
 
-    const entry = calcMaterialInventory(item, partial, creamLossResult);
-    set({
-      record: {
-        ...record,
-        material_inventory: { ...record.material_inventory, [itemId]: entry },
-      },
-    });
+    // Whipping Cream's closing total derives from Cream's loss result (§A.7)
+    if (itemId === "cream") {
+      get().setClosing("whipping_cream", record.closing["whipping_cream"] ?? {
+        under_cabinet: null,
+        non_coffee: null,
+        loose_rows: null,
+        loose_lines: null,
+        loose_extra: null,
+        loose: null,
+        box_count: null,
+      });
+    }
   },
 
   setClosing: (itemId, partial) => {
     const { record } = get();
     if (!record) return;
-    const item = seedItems.find((i) => i.id === itemId);
+    const { items } = useItemsStore.getState();
+    const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
-    const entry = calcClosing(item, partial);
+    const creamCanisterValue =
+      item.closing_inventory_formula === "whipping_cream"
+        ? record.material_loss["cream"]?.result ?? null
+        : null;
+
+    const entry = calcClosing(item, partial, creamCanisterValue);
     set({ record: { ...record, closing: { ...record.closing, [itemId]: entry } } });
     get().recomputeSheet2();
   },
@@ -136,9 +173,10 @@ export const useCountingStore = create<CountingState>((set, get) => ({
   recomputeSheet2: () => {
     const { record } = get();
     if (!record) return;
+    const { items } = useItemsStore.getState();
 
     const sheet2: DailyRecord["sheet2"] = {};
-    for (const item of seedItems) {
+    for (const item of items) {
       const back = record.back[item.id]?.total ?? null;
       const front = record.front[item.id]?.total ?? null;
       const closing = record.closing[item.id]?.total ?? null;

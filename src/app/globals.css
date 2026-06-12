@@ -11,3 +11,615 @@ body {
   color: var(--foreground);
   background: var(--background);
 }
+
+/* ============================================================
+   Dark theme — see mockups/dark_theme.html
+   Scoped under .app-dark (applied on /count/[date] layout root)
+   ============================================================ */
+.app-dark {
+  --page-bg: #0f1115;
+  --card-bg: #1a1d24;
+  --border: #2a2e37;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --field-bg: #14161b;
+  --field-auto-bg: #23262e;
+  --accent: #60a5fa;
+  --accent-strong: #93c5fd;
+  --warn: #f87171;
+
+  min-height: 100vh;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  font-family: -apple-system, "Segoe UI", Inter, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-dark * {
+  box-sizing: border-box;
+}
+
+/* ===== Top bar: tabs + admin (always visible) ===== */
+.app-dark .topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--page-bg);
+  flex: none;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.app-dark .tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.app-dark .tabs::-webkit-scrollbar {
+  display: none;
+}
+.app-dark .tab-btn {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.app-dark .tab-btn.active {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.app-dark .admin-btn {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* ===== Page content ===== */
+.app-dark .content {
+  flex: 1;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.app-dark .category-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 6px;
+}
+
+.app-dark .summary {
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.app-dark .summary .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.app-dark .summary .value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.app-dark .warning {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--warn);
+}
+
+.app-dark .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.app-dark .card.warn {
+  border-color: var(--warn);
+}
+.app-dark .card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.app-dark .card-head .title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.app-dark .card-head .subtitle {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.app-dark .card-head .total {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+
+.app-dark .ref {
+  font-size: 10px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.app-dark .check {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: -2px;
+}
+
+.app-dark .const {
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--field-auto-bg);
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+}
+
+.app-dark .canister-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.app-dark .canister-block:last-of-type {
+  border-bottom: none;
+}
+
+.app-dark .row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.app-dark .field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.app-dark .field .lbl {
+  font-size: 9px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.app-dark .field input,
+.app-dark .field select {
+  height: 32px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--field-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  width: 100%;
+  padding: 0 4px;
+}
+.app-dark .field input:focus,
+.app-dark .field select:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+.app-dark .field input.auto {
+  background: var(--field-auto-bg);
+  border-color: transparent;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.app-dark .op {
+  width: 14px;
+  height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 13px;
+}
+
+.app-dark .w44 { width: 44px; }
+.app-dark .w60 { width: 60px; }
+.app-dark .w70 { width: 70px; }
+.app-dark .w80 { width: 80px; }
+.app-dark .w105 {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 105px;
+}
+.app-dark .w105 .name {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.app-dark .add-btn {
+  height: 32px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+}
+.app-dark .add-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ===== Final result table ===== */
+.app-dark table.result {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.app-dark table.result th,
+.app-dark table.result td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 4px;
+  text-align: right;
+}
+.app-dark table.result th:first-child,
+.app-dark table.result td:first-child {
+  text-align: left;
+}
+.app-dark table.result th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+}
+.app-dark table.result td.total {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+.app-dark table.result tfoot td {
+  font-weight: 700;
+  color: var(--text-primary);
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+}
+
+.app-dark .submit-btn {
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #0b0f19;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ===== Admin overlay ===== */
+.app-dark .admin-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+.app-dark .admin-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.app-dark .admin-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 86%;
+  max-width: 320px;
+  background: var(--card-bg);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  z-index: 11;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.app-dark .admin-panel.open {
+  transform: translateX(0);
+}
+.app-dark .admin-panel h2 {
+  font-size: 15px;
+  margin: 0;
+}
+.app-dark .admin-panel .close-btn {
+  align-self: flex-end;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.app-dark .admin-link {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  text-decoration: none;
+  display: block;
+}
+
+/* ===== Home page ===== */
+.app-dark .home-header {
+  text-align: center;
+  margin-top: 24px;
+}
+.app-dark .home-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+.app-dark .home-header p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+}
+.app-dark .home-link {
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.app-dark .home-link.primary {
+  background: var(--accent);
+  color: #0b0f19;
+}
+.app-dark .home-link.secondary {
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+/* ===== Admin pages ===== */
+.app-dark .admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.app-dark .admin-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+.app-dark .admin-header .back-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+.app-dark .admin-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .app-dark .admin-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.app-dark .admin-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.app-dark .admin-card .title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.app-dark .admin-card .desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ===== Admin CRUD tables ===== */
+.app-dark .admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.app-dark .admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.app-dark .admin-table th,
+.app-dark .admin-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: left;
+}
+.app-dark .admin-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  z-index: 1;
+}
+.app-dark .admin-table tr:last-child td {
+  border-bottom: none;
+}
+.app-dark .admin-table input,
+.app-dark .admin-table select {
+  height: 28px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--field-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  padding: 0 6px;
+  width: 100%;
+  min-width: 64px;
+}
+.app-dark .admin-table input:focus,
+.app-dark .admin-table select:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+.app-dark .admin-table input.name-input {
+  min-width: 120px;
+}
+
+.app-dark .row-actions {
+  display: flex;
+  gap: 4px;
+}
+.app-dark .row-actions button {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.app-dark .row-actions button.confirm {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.app-dark .add-row-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-end;
+  padding: 10px 12px;
+  background: var(--card-bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.app-dark .add-row-form .field {
+  min-width: 90px;
+}
+.app-dark .add-row-form button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #0b0f19;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.app-dark .add-row-form button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.app-dark .checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.app-dark .checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ===== Autosave toast ===== */
+.app-dark .save-toast {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translate(-50%, 16px);
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  z-index: 20;
+}
+.app-dark .save-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

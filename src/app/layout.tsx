@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ItemsStoreInit from "@/components/ItemsStoreInit";
 
 export const metadata: Metadata = {
   title: "Luckin Counting",
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-50 text-gray-900">{children}</body>
+      <body className="app-dark">
+        <ItemsStoreInit />
+        {children}
+      </body>
     </html>
   );
 }
