@@ -57,26 +57,20 @@ export function calcFront(item: Item, entry: Pick<FrontEntry, "box_count">): Fro
 // --- Stage 3: Material Expired — Loss (countingflow.md §A.6/§A.2) ---
 export function calcMaterialLoss(
   item: Item,
-  entry: Pick<MaterialLossEntry, "container_id" | "gross_weight" | "rate_value"> & {
-    whipping_cream?: WhippingCreamCalc;
-  },
+  entry: Pick<MaterialLossEntry, "container_id" | "gross_weight" | "rate_value">,
   opts: {
-    addendResult?: number | null;
     containers: Container[];
+    // map of every item id -> its current total_volume (own weighed input, before
+    // any component split), used by "components" formula items
+    componentTotals: Record<string, number | null>;
   }
 ): MaterialLossEntry {
   const container = entry.container_id
     ? opts.containers.find((c) => c.id === entry.container_id) ?? null
     : null;
 
-  // Cream uses the whipping-cream canister calculator instead of a single gross weight
-  const whippingCream = entry.whipping_cream
-    ? calcWhippingCream(entry.whipping_cream)
-    : undefined;
-
   const total_volume =
-    whippingCream?.total_whipping_cream ??
-    (entry.gross_weight != null ? entry.gross_weight - (container?.tare_g ?? 0) : null);
+    entry.gross_weight != null ? entry.gross_weight - (container?.tare_g ?? 0) : null;
 
   let result: number | null = null;
 
@@ -85,17 +79,21 @@ export function calcMaterialLoss(
     if (total_volume != null && rate != null) {
       result = total_volume * rate;
     }
-  } else if (item.loss_formula === "subtract") {
-    const subtractFrom = entry.rate_value ?? item.loss_subtract_ml;
-    if (total_volume != null && subtractFrom != null) {
-      result = total_volume - subtractFrom;
+  } else if (item.loss_formula === "direct") {
+    result = total_volume;
+  } else if (item.loss_formula === "components") {
+    let any = total_volume != null;
+    let sum = total_volume ?? 0;
+    for (const c of item.loss_components ?? []) {
+      const src = opts.componentTotals[c.source_item_id];
+      if (src != null) {
+        sum += src * c.rate;
+        any = true;
+      }
     }
-  } else if (item.loss_formula === "add") {
-    if (total_volume != null && opts.addendResult != null) {
-      result = total_volume + opts.addendResult;
-    }
+    result = any ? sum : null;
   }
-  // "none" => result stays null (e.g. Pandan — triggers hard warning)
+  // "none" => result stays null
 
   return {
     container_id: entry.container_id ?? null,
@@ -103,7 +101,6 @@ export function calcMaterialLoss(
     total_volume,
     rate_value: entry.rate_value ?? null,
     result,
-    ...(whippingCream ? { whipping_cream: whippingCream } : {}),
   };
 }
 
@@ -127,16 +124,32 @@ export function calcWhippingCream(calc: WhippingCreamCalc): WhippingCreamCalc {
 }
 
 // --- Stage 4: Closing (countingflow.md §A.1/§A.3/§A.7) ---
+const UNOPENED_STACK_SIZE = 4;
+
 export function calcClosing(
   item: Item,
   entry: Pick<
     ClosingEntry,
-    "under_cabinet" | "non_coffee" | "loose_rows" | "loose_lines" | "loose_extra" | "loose" | "box_count"
-  >,
-  // (§A.7) only used for Whipping Cream: the "canister" value from Cream's Loss row
-  creamCanisterValue?: number | null
+    | "under_cabinet"
+    | "non_coffee"
+    | "loose_rows"
+    | "loose_lines"
+    | "loose_extra"
+    | "loose"
+    | "box_count"
+    | "unopened_stacks"
+    | "unopened_loose_pcs"
+  > & {
+    whipping_cream?: WhippingCreamCalc | null;
+  }
 ): ClosingEntry {
   let loose = entry.loose ?? null;
+  let non_coffee = entry.non_coffee ?? null;
+
+  // (§A.2/A.7) Whipping Cream's loose is derived from its own canister calculator
+  const whippingCream = entry.whipping_cream
+    ? calcWhippingCream(entry.whipping_cream)
+    : null;
 
   // (§A.7) Closing-inventory items derive `loose` instead of entering it directly
   const invBagSize = item.inventory_bag_size_g ?? item.bag_size_g;
@@ -146,7 +159,11 @@ export function calcClosing(
     } else if (item.closing_inventory_formula === "under_cabinet") {
       loose = invBagSize - (entry.under_cabinet ?? 0);
     } else if (item.closing_inventory_formula === "whipping_cream") {
-      loose = invBagSize - (creamCanisterValue ?? 0) - (entry.non_coffee ?? 0) - 50;
+      // Unopened boxes come in stacks of 4; loose_pcs is the remainder.
+      const totalPcs = (entry.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (entry.unopened_loose_pcs ?? 0);
+      non_coffee = totalPcs;
+      // unopened stock (in boxes) converted to g, plus cream still in canisters
+      loose = non_coffee * (item.bag_size_g ?? 0) + (whippingCream?.total_whipping_cream ?? 0);
     }
   } else if (item.loose_grid) {
     // (§A.3) row × line + loose grid entry
@@ -175,15 +192,18 @@ export function calcClosing(
 
   return {
     under_cabinet: entry.under_cabinet ?? null,
-    non_coffee: entry.non_coffee ?? null,
+    non_coffee,
     loose_rows: entry.loose_rows ?? null,
     loose_lines: entry.loose_lines ?? null,
     loose_extra: entry.loose_extra ?? null,
+    unopened_stacks: entry.unopened_stacks ?? null,
+    unopened_loose_pcs: entry.unopened_loose_pcs ?? null,
     loose,
     loose_sum,
     box_count: entry.box_count ?? null,
     box_sum,
     total: sumNullable(loose_sum, box_sum),
+    whipping_cream: whippingCream,
   };
 }
 
@@ -245,15 +265,7 @@ export function runSelfCheck(record: DailyRecord, items: Item[]): ValidationWarn
 
     if (item.appears_in.includes("expired")) {
       const entry = record.material_loss[item.id];
-      if (item.id === "pandan" && entry?.result == null) {
-        warnings.push({
-          itemId: item.id,
-          stage: "expired",
-          field: "result",
-          message: `${item.name}: container measurement missing (S-01)`,
-          severity: "error",
-        });
-      } else if (entry?.result != null && entry.result < 0) {
+      if (entry?.result != null && entry.result < 0) {
         warnings.push({
           itemId: item.id,
           stage: "expired",

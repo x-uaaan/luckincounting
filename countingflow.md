@@ -15,17 +15,18 @@
 2. Front (bar area)
    total = box × per_box_pcs   (boxes only, no loose)
         ↓
-3. Material Expired (Loss ONLY — during/end of service) (REVISED, see §A.6/§A.7)
+3. Material Expired (Loss ONLY — during/end of service) (REVISED, see §A.6/§A.7/§A.9)
    - Staff weighs the container being thrown (gross weight, container + leftover premix)
    - Staff selects which container was used from a dropdown (§A.6) → app subtracts
      the container's known tare weight automatically: total = gross_weight − tare_g
-   - multiply: result = total × rate          (Chocolate, Matcha, Matcha1000, Ceylon, Jasmine, SeaSalt, Cream-cheese)
-   - subtract: result = total − rate           (Cream; rate = ml left in canister, e.g. 694)
-   - add:      result = total + addend_result  (Milk; addend = Milk-Cheese result)
-   - none:     result = null → warning (Pandan must be measured, hard warning)
-   → the "Cream" subtract result (canister ml) feeds the Whipping Cream inventory
-     formula in Closing (§A.7) — Inventory (open working containers) is NO LONGER
-     a Material Expired sub-section; it has moved into Closing.
+   - multiply:   result = total × rate                (Pandan, Matcha, Matcha 1000, Chocolate, Ceylon, Jasmine — each standalone)
+     → the input card's row displays the full chain: `gross_weight − tare × rate = result`
+       (the rate is shown inline as a read-only constant, e.g. "500 − 281.5 × 0.286 = 62.43")
+   - direct:     result = total (plain weight, no rate) (Soda, Cheese Cap, Coconut Cheese Cap — entered as-is)
+   - components: result = own_total + Σ(component_total × rate) (Milk, Cream, Coconut Cream,
+     Frozen Coconut Juice, SeaSalt Cheese — see §A.9 for the Cheese Cap / Coconut Cheese Cap split)
+   → the whipping-cream canister calculator (§A.2) is NOT part of Material Expired —
+     it lives entirely in Closing and feeds the Whipping Cream inventory formula (§A.7).
         ↓
 4. Closing (after service)
    - Inventory items (13 items, §A.7): loose = bag_size − under_cabinet − non_coffee
@@ -33,8 +34,7 @@
      this is the former Material Expired "Inventory" section, now part of Closing)
    - powder/liquid: loose_sum = loose_g / bag_size_g
    - pieces:        loose_sum = loose_count   (see A.3 — flexible row×line+loose entry)
-   - sleeves:       loose_sum = loose_sleeves × per_bag_pcs (e.g. Cream Charger)
-   box_sum = box_count × per_box_pcs
+   box_sum = box_count × closing_per_box_pcs
    total   = loose_sum + box_sum
    ⚠ all fields can be empty → warning only, not a hard block
         ↓
@@ -55,22 +55,25 @@ syrup_weight  = pump_count × ml_per_pump          (g, density ≈ 1 g/ml)
 cream_weight  = total_weight − syrup_weight − empty_canister_weight
 ```
 
-**Known variants:**
-| Variant | Pumps | ml/pump | syrup_weight | empty_canister_weight |
-|---------|-------|---------|---------------|------------------------|
-| Vanilla whipping cream | 4 | 5 | 20 g | 150 g (preset) |
-| Sakura whipping cream  | 10 | 5 | 50 g | 150 g (preset) |
+**Known flavours:**
+| Flavour | Pumps | ml/pump | syrup_weight |
+|---------|-------|---------|---------------|
+| Vanilla whipping cream | 4 | 5 | 20 g |
+| Sakura whipping cream  | 10 | 5 | 50 g |
 
-- `pump_count`, `ml_per_pump` (= 5), and `empty_canister_weight` (tare) are **presets** per variant — not entered by the user.
-- `total_weight` is the **only field the user keys in** — the gross weight of that canister (canister + syrup + cream) as measured on the scale.
+- `pump_count` and `ml_per_pump` (= 5) are **presets** selected per canister via a **Vanilla/Sakura flavour dropdown** — not entered manually.
+- `empty_canister_weight` = the **"Canister" container's `tare_g`** (694 g, set on `/admin/containers`, §A.6) — the same value for every canister regardless of flavour, not a flavour-specific preset.
+- `total_weight` is the **only numeric field the user keys in** — the gross weight of that canister (canister + syrup + cream) as measured on the scale.
+- (NEW 2026-06-15) If `total_weight` is less than `syrup_weight + empty_canister_weight` (i.e. `cream_weight` would be negative), that canister row is flagged with a warning border and an inline error message — this indicates the entered weight is implausible (less than the empty canister + syrup alone).
 
-**Multi-variant sum:**
-- The 2 preset variants (Vanilla, Sakura) count toward the limit. User can add custom variants/canisters (custom name, pump count, ml/pump, tare weight, total weight) until **5 canisters total** are present (i.e. up to 3 additional beyond the 2 presets) — the "Add canister" control becomes disabled at 5.
+**Multi-canister sum:**
+- The page starts with **1 canister row** (default flavour Vanilla). Each row's flavour dropdown switches its pump/syrup/tare preset live and recomputes `cream_weight`. "+ Add canister" appends another row (default Vanilla, user can switch to Sakura) until **5 canisters total** — the control becomes disabled at 5.
 - App sums the cream-only weight across all canisters:
 ```
 total_whipping_cream = Σ cream_weight   (for i = 1..N, N ≤ 5)
 ```
-- This `total_whipping_cream` (cream only — canister and syrup already excluded) feeds into the Material Expired → Loss "Cream" row as the `total` measurement, per §B.4 / §B section 3.3.
+- This `total_whipping_cream` (cream only — canister and syrup already excluded) feeds directly into the Whipping Cream Closing inventory formula (§A.7) as the "canister" value. It is unrelated to Material Expired's "Cream" row (§A.9), which represents premix thrown as part of Cheese Cap, not cream still in usable canisters.
+- This calculator lives on the **Closing** page (`/count/closing`), on the Whipping Cream card — not on Material Expired.
 
 ## A.3 Flexible loose counting — row × line + loose (NEW)
 
@@ -88,9 +91,9 @@ loose_total = (rows × lines) + loose
 
 ## A.4 Key cross-references / gotchas
 
-- **Cream**: Loss "subtract" result (canister ml, e.g. 694) is reused as the canister value in Whipping Cream's Closing inventory formula (§A.7, formerly "3b"). The whipping cream variant calculator (A.2) is independent — it derives `cream_weight` per canister from `total_weight − syrup_weight − empty_canister_weight`, and `total_whipping_cream` (cream-only) feeds the Cream loss row's `total` (after container-tare subtraction, §A.6). Don't conflate the two canister concepts.
-- **Milk**: Loss "add" result depends on Milk-Cheese's result being computed first. Order of evaluation matters.
-- **Pandan**: Loss formula = "none" → must trigger a hard warning if container measurement is blank (per APP_ARCHITECTURE.md validation rules).
+- **Cream / Coconut Cream / Frozen Coconut Juice / SeaSalt Cheese**: these are "components" formula, summary-only rows in Material Expired — they have no own input, derived entirely from Cheese Cap / Coconut Cheese Cap (§A.9). The whipping-cream canister calculator (§A.2) is a separate concept that lives in Closing and feeds the Whipping Cream inventory formula (§A.7); don't conflate the two "cream" concepts.
+- **Milk**: "components" formula with its own input — result = own weight + Cheese Cap × 8/15 (§A.9). Order of evaluation matters: Cheese Cap must be entered/recomputed before Milk's dependent total updates.
+- **Pandan**: Loss formula = "multiply", rate = 2/7, default container = jug (same as Matcha Flavoured) — no longer a "none"/hard-warning item.
 - **Sheet2** is never directly editable — always derived from Back + Front + Closing.
 
 ## A.5 Known historical errors (from `Counting (1).xlsx` audit — for reference, not to be repeated)
@@ -114,15 +117,14 @@ total = gross_weight − container_tare_g
 | Container | Tare (g) | Default for Loss item |
 |-----------|----------|------------------------|
 | pitcher | 286 | Chocolate |
-| jug | 281.5 | Matcha |
+| jug | 281.5 | Matcha, Pandan |
 | powder container | 191 | Matcha 1000 |
 | squeezer | 31.5 | Ceylon Black Tea |
-| canister | 694 | Jasmine Tea, Cream |
-| small pitcher | 138 | SeaSalt (Cheese premix) |
-| coffee tupperware | 268 | Cream (Cheese premix) |
+| canister | 694 | Jasmine Tea |
 
 - Each Loss item has a **default** container preselected (above), but staff can change it via dropdown if a different container was actually used that day.
-- Items without a listed container (Pandan, Soda, Milk, Milk-Cheese, Coconut Cream, Frozen Coconut Juice, Seasalt-Coconut) keep entering `total` directly (no container subtraction) — Pandan still triggers the S-01 hard warning if blank.
+- Items entered as plain weight with no container subtraction (`loss_formula: "direct"` or `"components"` with own input): Soda, Cheese Cap, Coconut Cheese Cap, Milk.
+- Summary-only items with no input card at all (derived entirely from Cheese Cap / Coconut Cheese Cap, §A.9): Cream, SeaSalt Cheese, Coconut Cream, Frozen Coconut Juice.
 - Data model: each Loss item gets a `container_options: { name, tare_g }[]` (or a shared lookup keyed by container name) plus a `default_container` and a per-record `container_id` selection (see appflow.md §B.3).
 
 ## A.7 Inventory moved into Closing (NEW, from `Counting (2).xlsx`)
@@ -132,8 +134,25 @@ The former Material Expired "Inventory" sub-section (3b) is **removed from Mater
 ```
 loose = bag_size − under_cabinet − non_coffee   (solid beverage / frozen items)
 loose = bag_size − under_cabinet                (coffee beans)
-loose = 1228 − canister(from Loss "Cream" subtract result) − non_coffee − cherry_allocation(50)   (Whipping Cream)
+loose = (non_coffee × bag_size_g) + canister(from Closing's own whipping-cream canister calculator, §A.2)   (Whipping Cream)
 ```
+
+**Whipping Cream's `non_coffee` is derived, not entered directly.** Unopened boxes
+come in stacks of 4; staff enter the number of full stacks plus any loose pieces
+that don't make a full stack:
+
+```
+non_coffee = unopened_pcs = (stacks × 4) + loose_pcs
+```
+
+This `non_coffee` (pcs) then feeds the Whipping Cream `loose` formula above:
+`unopened_pcs` boxes × `bag_size_g` (1000) gives the unopened stock in grams,
+plus the cream still in canisters. There is no separate "total bag size"
+constant for Whipping Cream (the old `1228` was a leftover from before the
+Unopened/canister split and has been removed), and no cherry-allocation
+subtraction (the old `-50` was also a leftover and has been removed). The
+card shows both check lines: `stacks × 4 + loose_pcs = non_coffee pcs` and
+`non_coffee × 1000 + canister(...) = loose g`.
 
 | Item | Bag size (g) | Closing inventory formula |
 |------|--------------|----------------------------|
@@ -144,12 +163,12 @@ loose = 1228 − canister(from Loss "Cream" subtract result) − non_coffee − 
 | Blue Velvet Base (bag) | 595 | 595 − non_coffee |
 | Jasmine Tea (bag) | TBD | bag_size − non_coffee |
 | Ceylon Black Tea (g) | TBD | bag_size − non_coffee |
-| Pandan (bag) | TBD | bag_size − non_coffee (S-01 hard warning if Loss unmeasured) |
+| Pandan (bag) | TBD | bag_size − non_coffee |
 | Sea Salt Cheese (bag) | TBD | bag_size − non_coffee |
 | Cocoa Flavoured (bag) | TBD | bag_size − non_coffee |
 | Italian Bean (bag) | 600 | 600 − under_cabinet |
 | Yirgacheffe Bean (bag) | 566 | 566 − under_cabinet |
-| Whipping Cream (box) | 1228 | 1228 − canister(694, from Loss "Cream") − non_coffee(20) − cherry(50) = 464 |
+| Whipping Cream (box) | 1000 | (non_coffee × 1000) + canister(from Closing's own canister calc, §A.2) |
 
 The resulting `loose` then continues into the existing Closing formula (§A.1 stage 4): `loose_sum = loose / bag_size_g`.
 
@@ -168,13 +187,42 @@ The resulting `loose` then continues into the existing Closing formula (§A.1 st
 
 **Front** (17 items): 16oz Ice Cup, 16oz Hot Cup, Velvet Base, Milky Bev, Butter Flavour, Oat Milk, Cocoa Flavoured, Matcha Flavoured, Matcha 1000, Original Smoothie, Single Cup Paper Bag, Double Cup Paper Bag, Common Cup Holder, Cup Sleeve, Dome Lid, 16oz Flat Lid, 16oz Hot Lid
 
-**Material Expired — Loss only** (15 items, unchanged list, see §A.6): Chocolate, Matcha, Matcha 1000, Ceylon, Jasmine, Pandan, SeaSalt (Cheese), Cream (Cheese), Cream, Soda, Milk, Milk (Cheese), Coconut Cream, Frozen Coconut Juice, Seasalt (Coconut). These items are **Material-Expired-only** — they do not have Back/Front/Closing/Sheet2 rows (except where the same name also appears as a separate Back/Closing item, e.g. "Coconut Cream (box)" in Raw Material is a distinct item from Loss's "Coconut Cream").
+**Material Expired — Loss only** (14 items, see §A.6/§A.9): Pandan, Matcha, Matcha 1000, Chocolate, Ceylon, Jasmine, Milk, Soda, Cheese Cap, Coconut Cheese Cap (10 input cards), plus SeaSalt Cheese, Cream, Coconut Cream, Frozen Coconut Juice (4 summary-only rows derived from Cheese Cap / Coconut Cheese Cap). These items are **Material-Expired-only** — they do not have Back/Front/Closing/Sheet2 rows (except where the same name also appears as a separate Back/Closing item, e.g. "Coconut Cream (box)" in Raw Material is a distinct item from Loss's "Coconut Cream", and "Sea Salt Cheese (bag)" also appears in Back/Closing).
 
 **Closing** (51 items): same as Back, plus Whipping Cream (box) — i.e. Whipping Cream has no Back/Front row in `Counting (2).xlsx` but does have a Closing + Sheet2 row, plus its 13-item inventory calc (§A.7).
 
 **Sheet2 / Final**: mirrors the Closing item set (51–52 items; verify exact set against the xlsx during implementation — at minimum every Closing item must have a Sheet2 row, per E-03).
 
----
+## A.9 Cheese Cap / Coconut Cheese Cap split model (NEW, replaces Cream/Milk-Cheese/Seasalt-Coconut sub-items)
+
+Staff don't throw away Cream, Milk-in-cheese, and SeaSalt Cheese premix separately — they're scraped together and thrown as one **Cheese Cap** of combined waste. Likewise Coconut Cream, Frozen Coconut Juice, and Seasalt (Coconut variant) are thrown together as one **Coconut Cheese Cap**. Material Expired therefore has **10 input cards** and a **12-row summary**:
+
+**10 inputs:** Pandan, Matcha, Matcha 1000, Chocolate, Ceylon, Jasmine (unchanged `multiply` items, §A.6) — Milk, Soda, Cheese Cap, Coconut Cheese Cap (new, weighed as plain weight, no container).
+
+**12-row summary:** the same 6 unchanged items, plus SeaSalt Cheese, Cream, Coconut Cream, Frozen Coconut Juice, Milk, Soda — where the last 6 are derived/echoed from the inputs above.
+
+**Split rates** (sum to 1 within each cap — same numeric rates previously used for the now-removed `cream_cheese_premix`/`milk_cheese_premix`/`seasalt_coconut` items):
+
+```
+Cheese Cap split:
+  Cream            = Cheese Cap × 1/3
+  Milk (in cheese) = Cheese Cap × 8/15
+  SeaSalt Cheese share #1 = Cheese Cap × 2/15
+
+Coconut Cheese Cap split:
+  Coconut Cream         = Coconut Cheese Cap × 0.8860759494
+  Frozen Coconut Juice  = Coconut Cheese Cap × 0.07594936709
+  SeaSalt Cheese share #2 = Coconut Cheese Cap × 0.03797468354
+
+SeaSalt Cheese (summary) = SeaSalt Cheese share #1 + SeaSalt Cheese share #2
+Milk (summary)           = Milk (own weighed input) + Milk (in cheese)
+```
+
+- `Cream`, `Coconut Cream`, `Frozen Coconut Juice`, `SeaSalt Cheese` have **no own input** — summary-only rows (`loss_role: "summary"`).
+- `Milk` has its own input **and** a summary row that adds the Cheese Cap share (`loss_role: "input_and_summary"`).
+- `Soda`, `Cheese Cap`, `Coconut Cheese Cap` are entered as plain weight (`loss_formula: "direct"`, result = weight, no rate).
+- Whenever Cheese Cap or Coconut Cheese Cap is edited, the app recomputes every dependent summary row automatically (`useCountingStore.setMaterialLoss`).
+- The whipping-cream canister calculator (§A.2) is **not** part of this model — it lives in Closing and represents cream still in usable canisters, not waste.
 
 # §B. Full reference — original COUNTING_RULES.md
 
@@ -313,7 +361,8 @@ Items counted per remaining physical stock after closing.
 
 - Liquid/powder items: `loose` = measured grams/ml → `loose_sum = loose / bag_size`
 - Piece items: `loose` = count → `loose_sum = loose` (direct)
-- Cream Charger (special): `loose` = number of open sleeves → `loose_sum = loose × per_sleeve_pcs`
+- Cream Charger (REVISED 2026-06-15): `loose` = loose pcs (direct, `loose_sum = loose`); the "Ctn" row's
+  `closing_per_box_pcs` is 10 (1 sleeve = 10 pcs), so `total = loose + box_count × 10`
 
 ### B.3.5 Sheet2 (Final)
 
@@ -325,15 +374,18 @@ Items not present in a stage are treated as **0** (not NaN).
 
 | Item | Rate | Notes |
 |------|------|-------|
-| Chocolate | 0.5 (50%) | Standard |
-| Matcha | 2/7 ≈ 0.2857 | Standard |
-| Matcha 1000 | 1/3 ≈ 0.3333 | Standard |
-| Ceylon Black Tea | 0.45 (45%) | Standard |
-| Jasmine Tea | 0.45 (45%) | Standard |
-| SeaSalt (Cheese premix) | 2/15 ≈ 0.1333 | Standard |
-| Cream (Cheese premix) | 1/3 ≈ 0.3333 | Standard |
-| Milk (Cheese premix) | 8/15 ≈ 0.5333 | Standard |
-| Pandan | Not measured — see errors | ⚠ |
+| Chocolate | 0.5 (50%) | `multiply` |
+| Matcha | 2/7 ≈ 0.2857 | `multiply` |
+| Matcha 1000 | 1/3 ≈ 0.3333 | `multiply` |
+| Ceylon Black Tea | 1/20 = 0.05 | `multiply` |
+| Jasmine Tea | 1/20 = 0.05 | `multiply` |
+| Pandan | 2/7 ≈ 0.2857 | `multiply` |
+| Soda, Cheese Cap, Coconut Cheese Cap | — (n/a) | `direct`, plain weight in/out |
+| Cream | Cheese Cap × 1/3 | `components`, see §A.9 |
+| Milk (in cheese share) | Cheese Cap × 8/15 | `components`, added to Milk's own input, §A.9 |
+| SeaSalt Cheese | Cheese Cap × 2/15 + Coconut Cheese Cap × 0.03797468354 | `components`, §A.9 |
+| Coconut Cream | Coconut Cheese Cap × 0.8860759494 | `components`, §A.9 |
+| Frozen Coconut Juice | Coconut Cheese Cap × 0.07594936709 | `components`, §A.9 |
 
 ## B.5 Confirmed Errors
 
@@ -420,10 +472,9 @@ Items not present in a stage are treated as **0** (not NaN).
 
 - **Sheet2 is auto-generated** — never allow direct input into Sheet2; it must be calculated from Back + Front + Closing
 - **Closing fields must allow empty** with a warning prompt before final submission
-- **Material Expired rate column** must be replaced with clearly labeled formula cells per item (proportion, subtraction, or addition)
+- **Material Expired rate column** must be replaced with clearly labeled formula cells per item (`multiply`, `direct`, or `components` — §A.9)
 - **Material Expired container measurement** must let staff pick a container preset (§A.6) and enter the gross weight; the app subtracts the tare automatically — staff should never need to do this subtraction by hand
-- **Material Expired is Loss-only** (§A.6/§A.8) — the former Inventory sub-section now lives inline on the relevant Closing item cards (§A.7)
-- **Pandan** must show a hard warning if the container measurement is blank
+- **Material Expired is Loss-only** (§A.6/§A.8/§A.9) — the former Inventory sub-section now lives inline on the relevant Closing item cards (§A.7); the whipping-cream canister calculator (§A.2) also lives in Closing
 - File saved to Google Drive as `YYMMDD.xlsx` upon final approval by admin
 - Admin can CRUD all items and sections (except stage names/order)
 - Delete workflow: component → confirmation warning → confirmed delete
@@ -440,3 +491,10 @@ Items not present in a stage are treated as **0** (not NaN).
 | 2026-06-12 | Re-derived flow from `Counting (2).xlsx`: revised §A.1 stage 3 (Material Expired = Loss only, with container-tare selector) and stage 4 (Closing absorbs the former Inventory sub-section). Added §A.6 (container preset table: pitcher/jug/powder container/squeezer/canister/small pitcher/coffee tupperware with tare weights), §A.7 (13-item Inventory→Closing formula table), §A.8 (full Back/Front/Material-Expired-Loss/Closing/Sheet2 item membership; new item "Souflle Syrup (bottle)" replaces "Pineapple Syrup" which is no longer in the xlsx). Updated §B.7 app design notes accordingly | Claude |
 | 2026-06-12 | Clarified §A.2: "max 5" means 5 canisters total including the 2 presets (Vanilla, Sakura), so up to 3 more can be added | Claude |
 | 2026-06-12 | Implemented §A.1–§A.8 in code: `seedItems.ts` now has the full 60-item list (50 Back / 17 Front / 51 Closing+Sheet2 / 15 Loss-only), `pineapple_syrup` removed. Discovered Front's box-pcs constants differ from Back's for several shared items (Velvet Base, Milky Bev, Cup Sleeve, Common Cup Holder, Dome Lid, 16oz Flat/Hot Lid, Single/Double Cup Paper Bag, Butter Flavour, Oat Milk, Cocoa/Matcha/Matcha1000/Smoothie) — added `front_per_box_pcs` to the `Item` model (appflow.md §B.3) so Front uses its own per-box constant instead of Back's. 13 closing-inventory items now also carry `inventory_bag_size_g` (falls back to `bag_size_g`) since Italian/Yirgacheffe Bean and Whipping Cream use a different bag size for the inventory formula than for `loose_sum`. Note: bag sizes marked TBD (§A.7) for Matcha 1000/Jasmine/Ceylon/Pandan/SeaSalt/Cocoa use a 300g placeholder pending confirmation | Claude |
+| 2026-06-15 | Confirmed standard loss rates (§B.4): Pandan now `loss_formula: "multiply"`, `loss_rate: 2/7` (same as Matcha Flavoured), default container = jug — removed the old "none"/S-01 hard-warning behavior (Pandan no longer needs a special-case warning in `calculations.ts`/`/count/expired`). Ceylon Black Tea and Jasmine Tea `loss_rate` changed from 0.45 to 1/20 (0.05) | Claude |
+| 2026-06-15 | Restructured Material Expired loss model (§A.9): replaced `cream_cheese_premix`/`milk_cheese_premix`/`seasalt_coconut` with two new combined-waste inputs, "Cheese Cap" and "Coconut Cheese Cap" (`loss_formula: "direct"`). Added `LossFormula` variants `"direct"` and `"components"` (replacing `"subtract"`/`"add"`) and `Item.loss_components`/`loss_role`. Material Expired now has 10 input cards and a 12-row read-only summary; Cream, SeaSalt Cheese, Coconut Cream, Frozen Coconut Juice are summary-only rows derived from the two caps, and Milk = own input + Cheese Cap × 8/15. The whipping-cream canister calculator (§A.2) moved from Material Expired's "Cream" card to the Closing page's Whipping Cream card (`ClosingEntry.whipping_cream`), and now feeds the Whipping Cream inventory formula (§A.7) directly instead of via Material Expired's old "Cream" subtract result. Also removed the last stale Pandan/S-01 warning leftover from `/count/closing` | Claude |
+| 2026-06-15 | Two UI/calc refinements: (1) §A.1 stage 3 — multiply-formula Material Expired cards now display the rate inline in the row itself (`gross_weight − tare × rate = result`), removing the separate redundant check line. (2) §A.2/§A.7 — Whipping Cream's Closing card: replaced the fixed Vanilla+Sakura preset rows with a single starting canister row (up to 5) where each row has a Vanilla/Sakura flavour dropdown that live-switches the pump/syrup/tare preset (`WhippingCreamVariant.flavour`); added an "Unopened" calc (`stacks × 4 + loose_pcs = unopened_pcs`, `× bag_size_g(1000) = non_coffee`) that now derives `non_coffee` for the Whipping Cream inventory formula instead of a manual entry. New `ClosingEntry.unopened_stacks`/`unopened_loose_pcs` fields | Claude |
+| 2026-06-15 | Whipping Cream follow-up (§A.1/§A.7): removed the Ctn row (`closing_per_box_pcs: 8`) from the Whipping Cream item — its total now comes only from the inventory `loose` calc. Also dropped the `× bag_size_g(1000)` step from the Unopened calc: `non_coffee = unopened_pcs` directly (Whipping Cream's unit is "box", same scale as the rest of its `loose` formula), so `1228 − canister − non_coffee − 50` now produces sane values (e.g. stacks=2/loose=3 → non_coffee=11 → 1228 − 530 − 11 − 50 = 637 g → 0.637 box) | Claude |
+| 2026-06-15 | Whipping Cream: removed the leftover `1228` constant (§A.7) — it was the old "Section B" inventory bag size from `Counting (1).xlsx`, no longer meaningful after the Unopened/canister split. Formula is now `loose = (non_coffee × bag_size_g(1000)) + canister − cherry(50)`, i.e. unopened stock (in boxes) converted to grams, plus cream currently in canisters, minus the cherry allocation. Removed `inventory_bag_size_g: 1228` from the `whipping_cream` item (`bag_size_g: 1000` is now used directly). Verified via preview: stacks=2/loose=3/canister total=−14 (700−20−694) → `11 × 1000 + (−14) − 50 = 10936 g → 10.936 box` | Claude |
+| 2026-06-15 | Whipping Cream: removed the 50g cherry allocation from the `loose` formula (§A.7) — user reported it as wrong; correct formula is just `loose = (non_coffee × bag_size_g(1000)) + canister`, i.e. unopened stock in boxes (× 1000 = g) plus canister total (g), so `loose_sum = non_coffee + canister/1000` gives a sensible combined "box" total (e.g. 11 box + 565 g canister → 11.565 box). Updated `calcClosing`, the Closing check line, and `whipping_cream`'s `notes` field accordingly | Claude |
+| 2026-06-15 | Two fixes: (1) §A.2 — a whipping-cream canister row is now flagged with a warning border + inline message if `total_weight < syrup_weight + empty_canister_weight` (cream_weight would be negative). (2) §B.3.4/§A.1 — Cream Charger's Closing calc was wrong (`loose_sum = loose_sleeves × per_bag_pcs(10)` double-counted the per-sleeve multiplier against the "Ctn" row's `closing_per_box_pcs: 1`); changed `closing_input_type` to `"count"` (`loose_sum = loose` directly, in pcs) and `closing_per_box_pcs` to `10` (1 sleeve = 10 pcs), so `total = loose(pcs) + box_count × 10`. Verified via preview: loose=4, boxes=3 → `4 + 30 = 34 pcs` (was previously `40 + 3 = 43`) | Claude |

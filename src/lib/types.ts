@@ -2,7 +2,7 @@
 
 export type Stage = "back" | "front" | "expired" | "closing" | "sheet2";
 
-export type LossFormula = "multiply" | "subtract" | "add" | "none";
+export type LossFormula = "multiply" | "direct" | "components" | "none";
 
 export type ClosingInventoryFormula = "non_coffee" | "under_cabinet" | "whipping_cream";
 
@@ -29,8 +29,14 @@ export interface Item {
 
   loss_formula: LossFormula;
   loss_rate: number | null;        // for "multiply"
-  loss_subtract_ml: number | null; // for "subtract" (e.g. Cream canister 694ml)
-  loss_addend_item_id: string | null; // for "add" (e.g. Milk <- Milk-Cheese result)
+
+  // (NEW) for "components" — sum of componentTotals[source_item_id] * rate,
+  // added to this item's own total_volume (if any)
+  loss_components: { source_item_id: string; rate: number }[] | null;
+
+  // (NEW) controls Material Expired rendering: "input" = input card only,
+  // "summary" = summary row only, "input_and_summary" = both (default)
+  loss_role: "input" | "input_and_summary" | "summary";
 
   // (countingflow.md §A.6) Material Expired container-tare selector — only set for
   // Loss items that have a container preset. null => no container subtraction.
@@ -62,6 +68,7 @@ export interface Container {
 export interface WhippingCreamVariant {
   id: string;
   name: string;                  // "Vanilla", "Sakura", or custom
+  flavour: "vanilla" | "sakura";  // selects the pump/canister preset for this row
   pump_count: number;            // preset, e.g. 4 (Vanilla), 10 (Sakura)
   ml_per_pump: number;           // preset, default 5
   empty_canister_weight: number; // preset tare weight (g) of this canister type
@@ -94,9 +101,6 @@ export interface MaterialLossEntry {
   total_volume: number | null;   // computed = gross_weight - container.tare_g (or = gross_weight if no container)
   rate_value: number | null;     // context-dependent: subtraction ml / addend value
   result: number | null;         // computed
-
-  // (NEW, §A.2/A.4) only present for the Cream item
-  whipping_cream?: WhippingCreamCalc;
 }
 
 export interface ClosingEntry {
@@ -109,11 +113,21 @@ export interface ClosingEntry {
   loose_lines: number | null;
   loose_extra: number | null;
 
+  // (NEW, §A.2/A.4) Whipping Cream "unopened" calc — unopened boxes come in
+  // stacks of 4; loose_pcs is the remainder that doesn't fill a stack.
+  // total pcs = unopened_stacks * 4 + unopened_loose_pcs, converted to grams
+  // (× bag_size_g) and used as `non_coffee` in the whipping_cream formula.
+  unopened_stacks: number | null;
+  unopened_loose_pcs: number | null;
+
   loose: number | null;     // g/ml, pcs, or open sleeves depending on closing_input_type (or derived, §A.7)
   loose_sum: number | null; // computed
   box_count: number | null;
   box_sum: number | null;   // computed
   total: number | null;     // computed
+
+  // (NEW, §A.2/A.4) only present for the Whipping Cream item — canister calculator
+  whipping_cream: WhippingCreamCalc | null;
 }
 
 export interface Sheet2Entry {

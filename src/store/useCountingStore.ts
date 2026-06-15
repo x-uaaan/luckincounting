@@ -46,9 +46,7 @@ interface CountingState {
   setFront: (itemId: string, partial: Pick<FrontEntry, "box_count">) => void;
   setMaterialLoss: (
     itemId: string,
-    partial: Pick<MaterialLossEntry, "container_id" | "gross_weight" | "rate_value"> & {
-      whipping_cream?: WhippingCreamCalc;
-    }
+    partial: Pick<MaterialLossEntry, "container_id" | "gross_weight" | "rate_value">
   ) => void;
   setClosing: (
     itemId: string,
@@ -61,7 +59,11 @@ interface CountingState {
       | "loose_extra"
       | "loose"
       | "box_count"
-    >
+      | "unopened_stacks"
+      | "unopened_loose_pcs"
+    > & {
+      whipping_cream?: WhippingCreamCalc | null;
+    }
   ) => void;
 
   recomputeSheet2: () => void;
@@ -116,41 +118,29 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
-    // "add" formula items (e.g. Milk) depend on another item's Loss result
-    const addendResult =
-      item.loss_addend_item_id != null
-        ? record.material_loss[item.loss_addend_item_id]?.result ?? null
-        : null;
+    const componentTotals: Record<string, number | null> = {};
+    for (const i of items) {
+      componentTotals[i.id] = record.material_loss[i.id]?.total_volume ?? null;
+    }
 
-    const entry = calcMaterialLoss(item, partial, { addendResult, containers });
+    const entry = calcMaterialLoss(item, partial, { containers, componentTotals });
     const material_loss = { ...record.material_loss, [itemId]: entry };
 
-    // "add" formula items consuming this item's result (e.g. Milk <- Milk-Cheese) recompute
-    const dependent = items.find((i) => i.loss_addend_item_id === itemId);
-    if (dependent) {
-      const depEntry = record.material_loss[dependent.id];
-      if (depEntry) {
-        material_loss[dependent.id] = calcMaterialLoss(dependent, depEntry, {
-          addendResult: entry.result,
-          containers,
-        });
-      }
+    // Recompute every item whose "components" formula sources this item's total_volume
+    componentTotals[itemId] = entry.total_volume;
+    const dependents = items.filter((i) =>
+      i.loss_components?.some((c) => c.source_item_id === itemId)
+    );
+    for (const dep of dependents) {
+      const depPartial = record.material_loss[dep.id] ?? {
+        container_id: null,
+        gross_weight: null,
+        rate_value: null,
+      };
+      material_loss[dep.id] = calcMaterialLoss(dep, depPartial, { containers, componentTotals });
     }
 
     set({ record: { ...record, material_loss } });
-
-    // Whipping Cream's closing total derives from Cream's loss result (§A.7)
-    if (itemId === "cream") {
-      get().setClosing("whipping_cream", record.closing["whipping_cream"] ?? {
-        under_cabinet: null,
-        non_coffee: null,
-        loose_rows: null,
-        loose_lines: null,
-        loose_extra: null,
-        loose: null,
-        box_count: null,
-      });
-    }
   },
 
   setClosing: (itemId, partial) => {
@@ -160,12 +150,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
-    const creamCanisterValue =
-      item.closing_inventory_formula === "whipping_cream"
-        ? record.material_loss["cream"]?.result ?? null
-        : null;
-
-    const entry = calcClosing(item, partial, creamCanisterValue);
+    const entry = calcClosing(item, partial);
     set({ record: { ...record, closing: { ...record.closing, [itemId]: entry } } });
     get().recomputeSheet2();
   },

@@ -38,11 +38,34 @@ export default function AdminLossPage() {
                   <td>{item.name}</td>
                   <td>{item.category}</td>
                   <td>
-                    <input
-                      inputMode="decimal"
-                      value={item.loss_rate ?? ""}
-                      onChange={(e) => updateItem(item.id, { loss_rate: numOrNull(e.target.value) })}
-                    />
+                    {item.loss_formula === "multiply" && (
+                      <input
+                        inputMode="decimal"
+                        value={item.loss_rate ?? ""}
+                        onChange={(e) => updateItem(item.id, { loss_rate: numOrNull(e.target.value) })}
+                      />
+                    )}
+                    {item.loss_formula === "components" &&
+                      (item.loss_components ?? []).map((c, idx) => {
+                        const srcName = items.find((i) => i.id === c.source_item_id)?.name ?? c.source_item_id;
+                        return (
+                          <div key={c.source_item_id} className="admin-rate-row">
+                            <span className="admin-rate-label">via {srcName}</span>
+                            <input
+                              inputMode="decimal"
+                              value={c.rate}
+                              onChange={(e) => {
+                                const rate = Number(e.target.value);
+                                const loss_components = (item.loss_components ?? []).map((cc, i) =>
+                                  i === idx ? { ...cc, rate } : cc
+                                );
+                                updateItem(item.id, { loss_components });
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    {item.loss_formula === "direct" && "—"}
                   </td>
                 </tr>
               ))}

@@ -211,6 +211,9 @@ body {
 .app-dark .canister-block:last-of-type {
   border-bottom: none;
 }
+.app-dark .canister-block.warn {
+  border-color: var(--warn);
+}
 
 .app-dark .row {
   display: flex;
@@ -535,6 +538,20 @@ body {
 }
 .app-dark .admin-table input.name-input {
   min-width: 120px;
+}
+.app-dark .admin-rate-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+.app-dark .admin-rate-row .admin-rate-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.app-dark .admin-rate-row input {
+  width: 70px;
 }
 
 .app-dark .row-actions {
