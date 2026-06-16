@@ -17,6 +17,7 @@ import {
   calcSheet2,
   runSelfCheck,
 } from "@/lib/calculations";
+import { fetchRecord, upsertRecord } from "@/lib/recordsRepo";
 
 function emptyRecord(date: string): DailyRecord {
   return {
@@ -55,6 +56,7 @@ function saveRecord(date: string, record: DailyRecord): void {
   } catch {
     // ignore
   }
+  void upsertRecord(record);
 }
 
 interface CountingState {
@@ -63,7 +65,7 @@ interface CountingState {
   selfCheckWarnings: ValidationWarning[];
   selfCheckRan: boolean;
 
-  loadDate: (date: string) => void;
+  loadDate: (date: string) => Promise<void>;
   runSelfCheck: () => void;
 
   setBack: (itemId: string, partial: Pick<BackEntry, "open_bags" | "box_count" | "loose_extra">) => void;
@@ -101,11 +103,15 @@ export const useCountingStore = create<CountingState>((set, get) => ({
   selfCheckWarnings: [],
   selfCheckRan: false,
 
-  loadDate: (date) => {
-    // TODO: replace with Supabase fetch; falls back to the locally
-    // persisted draft for this date, or a fresh empty draft.
-    const record = loadStoredRecord(date) ?? emptyRecord(date);
-    set({ date, record, selfCheckWarnings: [], selfCheckRan: false });
+  loadDate: async (date) => {
+    // Try Supabase first; fall back to localStorage draft, then empty record.
+    const local = loadStoredRecord(date) ?? emptyRecord(date);
+    set({ date, record: local, selfCheckWarnings: [], selfCheckRan: false });
+    const remote = await fetchRecord(date);
+    if (remote) {
+      set({ record: remote });
+      saveRecord(date, remote);
+    }
   },
 
   runSelfCheck: () => {
