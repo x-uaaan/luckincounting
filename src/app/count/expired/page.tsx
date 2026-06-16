@@ -3,6 +3,7 @@
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
+import NumericInput from "@/components/NumericInput";
 
 export default function ExpiredPage() {
   useLoadDate();
@@ -88,13 +89,12 @@ export default function ExpiredPage() {
               )}
               <div className="field w70">
                 <div className="lbl">{containerOptions ? "Gross wt" : "Weight (g)"}</div>
-                <input
-                  inputMode="numeric"
-                  value={entry?.gross_weight ?? ""}
-                  onChange={(e) =>
+                <NumericInput
+                  value={entry?.gross_weight ?? null}
+                  onChange={(v) =>
                     setMaterialLoss(item.id, {
                       container_id: selectedContainerId || null,
-                      gross_weight: e.target.value === "" ? null : Number(e.target.value),
+                      gross_weight: v,
                       rate_value: entry?.rate_value ?? null,
                     })
                   }

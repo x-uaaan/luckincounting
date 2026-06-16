@@ -4,18 +4,37 @@ export type Stage = "back" | "front" | "expired" | "closing" | "sheet2";
 
 export type LossFormula = "multiply" | "direct" | "components" | "none";
 
-export type ClosingInventoryFormula = "non_coffee" | "under_cabinet" | "whipping_cream";
+export type ClosingInventoryFormula = "non_coffee" | "under_cabinet" | "whipping_cream" | "stack_box" | "container_direct" | "container_plus_loose";
 
 export interface Item {
   id: string;
   name: string;              // e.g. "Matcha Flavoured (bag)"
   category: string;          // e.g. "Solid Beverage"
-  sort_order: number;
+  sort_order: number;        // Back/Front/Material Expired/Closing order
+
+  // (NEW) Final (Sheet2/Result) page display order — falls back to sort_order
+  // when null. Lets the Final page follow its own sequence independent of the
+  // category-grouped Back/Front/Closing order.
+  final_sort_order: number | null;
+
+  // (NEW §A.21) Closing page display order — falls back to sort_order when null.
+  closing_sort_order: number | null;
+
   appears_in: Stage[];       // which stages this item appears in
 
   unit: string | null; // display unit, e.g. "pcs", "bag", "bottle", "box", "pack", "can", "g"
 
   per_bag_pcs: number | null; // null ("-") => whole-unit item
+
+  // (NEW §A.18/§A.19/§A.20) When "stack_box", Back's "Loose" row becomes
+  // `Stacks × unopened_stack_size + Loose = Sum` instead of `Bags × per_bag_pcs = Sum`
+  // (mirrors the Closing "stack_box" calc for the same item). When "hidden",
+  // the Loose/Count row is omitted entirely (item has only a Ctn row). When
+  // "bag_count", the "Loose" row is a plain bag-count input (no per-bag
+  // multiply), the "Ctn" row is `Boxes × per_box_pcs = Sum` (also in bags),
+  // and `total = (bag_sum + box_sum) × bag_size_g` converts the bag total to
+  // the item's display unit (e.g. grams).
+  back_loose_formula: "stack_box" | "hidden" | "bag_count" | null;
   per_box_pcs: number | null;       // Back box pcs
   front_per_box_pcs: number | null; // Front box pcs (may differ from Back, countingflow.md §A.8)
   closing_per_box_pcs: number | null; // Closing storage-box pcs (appflow.md §A.6.5)
@@ -45,6 +64,18 @@ export interface Item {
   // (countingflow.md §A.7) Closing inventory calc — only set for the 13 items whose
   // "loose" is derived in Closing instead of entered directly.
   closing_inventory_formula: ClosingInventoryFormula | null;
+
+  // (§A.10) When true, the "non_coffee" inventory input on Closing is entered via a
+  // container-tare selector (gross weight − container tare) instead of a raw number.
+  closing_container_input: boolean;
+
+  // (§A.10) Stack size for the "stack_box" closing_inventory_formula — Raw Material
+  // boxes are stacked N-per-stack; total = stacks * unopened_stack_size + extra pcs.
+  unopened_stack_size: number | null;
+
+  // (§A.10) Whether Closing shows the Bag/Ctn/Bottle box-count row at all. Many
+  // categories (Packaging, Syrup, Coffee Bean, Soda, Merch, etc.) are "loose only".
+  closing_box_row: boolean;
 
   // (countingflow.md §A.3) Flexible row×line+loose entry for Raw Material/Syrup/Frozen.
   loose_grid: boolean;
@@ -84,6 +115,7 @@ export interface WhippingCreamCalc {
 
 export interface BackEntry {
   open_bags: number | null;
+  loose_extra: number | null; // (NEW §A.18) extra pcs for "back_loose_formula: stack_box" items
   bag_sum: number | null;   // computed
   box_count: number | null;
   box_sum: number | null;   // computed
@@ -119,6 +151,11 @@ export interface ClosingEntry {
   // (× bag_size_g) and used as `non_coffee` in the whipping_cream formula.
   unopened_stacks: number | null;
   unopened_loose_pcs: number | null;
+
+  // (§A.10) container-tare entry for items with closing_container_input — gross
+  // weight is weighed with the container still on; non_coffee = gross - tare.
+  container_id: string | null;
+  gross_weight: number | null;
 
   loose: number | null;     // g/ml, pcs, or open sleeves depending on closing_input_type (or derived, §A.7)
   loose_sum: number | null; // computed

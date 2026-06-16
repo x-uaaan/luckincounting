@@ -3,6 +3,7 @@
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
+import NumericInput from "@/components/NumericInput";
 
 export default function FrontPage() {
   useLoadDate();
@@ -54,14 +55,9 @@ export default function FrontPage() {
                 </div>
                 <div className="field w44">
                   <div className="lbl">Boxes</div>
-                  <input
-                    inputMode="numeric"
-                    value={entry?.box_count ?? ""}
-                    onChange={(e) =>
-                      setFront(item.id, {
-                        box_count: e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
+                  <NumericInput
+                    value={entry?.box_count ?? null}
+                    onChange={(v) => setFront(item.id, { box_count: v })}
                   />
                 </div>
                 <div className="op">×</div>

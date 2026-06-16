@@ -112,6 +112,39 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-top: 6px;
+  scroll-margin-top: 90px;
+  position: sticky;
+  top: 82px;
+  background: var(--page-bg);
+  padding: 4px 0;
+  z-index: 3;
+}
+
+.app-dark .category-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  position: sticky;
+  top: 52px;
+  background: var(--page-bg);
+  z-index: 4;
+}
+.app-dark .category-nav::-webkit-scrollbar {
+  display: none;
+}
+.app-dark .category-nav-btn {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .app-dark .summary {
@@ -326,6 +359,17 @@ body {
 .app-dark table.result td.total {
   color: var(--accent-strong);
   font-weight: 700;
+}
+.app-dark table.result tr.category-row td {
+  background: var(--page-bg);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 6px 4px 4px;
+  scroll-margin-top: 90px;
 }
 .app-dark table.result tfoot td {
   font-weight: 700;

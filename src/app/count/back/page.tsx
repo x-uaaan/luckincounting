@@ -3,6 +3,8 @@
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
+import CategoryNav, { categoryAnchorId } from "@/components/CategoryNav";
+import NumericInput from "@/components/NumericInput";
 
 export default function BackPage() {
   useLoadDate();
@@ -23,9 +25,11 @@ export default function BackPage() {
   );
 
   let currentCategory = "";
+  const categories = Array.from(new Set(items.map((i) => i.category)));
 
   return (
     <>
+      <CategoryNav categories={categories} />
       {items.map((item) => {
         const entry = record.back[item.id];
         const showCategory = item.category !== currentCategory;
@@ -42,7 +46,11 @@ export default function BackPage() {
 
         return (
           <div key={item.id}>
-            {showCategory && <div className="category-label">{item.category}</div>}
+            {showCategory && (
+              <div className="category-label" id={categoryAnchorId(item.category)}>
+                {item.category}
+              </div>
+            )}
             <div className={`card ${errorItemIds.has(item.id) ? "warn" : ""}`}>
               <div className="card-head">
                 <div>
@@ -56,19 +64,81 @@ export default function BackPage() {
                 </div>
               </div>
 
-              {hasBagFactor ? (
+              {item.back_loose_formula === "hidden" ? null : item.back_loose_formula === "stack_box" ? (
+                <div className="row">
+                  <div className="w105">
+                    <div className="name">Loose</div>
+                  </div>
+                  <div className="field w44">
+                    <div className="lbl">Stacks</div>
+                    <NumericInput
+                      value={entry?.open_bags ?? null}
+                      onChange={(v) =>
+                        setBack(item.id, {
+                          open_bags: v,
+                          loose_extra: entry?.loose_extra ?? null,
+                          box_count: entry?.box_count ?? null,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="op">×</div>
+                  <div className="field w44">
+                    <div className="lbl">/stack</div>
+                    <div className="const">{item.unopened_stack_size ?? 4}</div>
+                  </div>
+                  <div className="op">+</div>
+                  <div className="field w44">
+                    <div className="lbl">Loose</div>
+                    <NumericInput
+                      value={entry?.loose_extra ?? null}
+                      onChange={(v) =>
+                        setBack(item.id, {
+                          open_bags: entry?.open_bags ?? null,
+                          loose_extra: v,
+                          box_count: entry?.box_count ?? null,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="op">=</div>
+                  <div className="field w70">
+                    <div className="lbl">Sum</div>
+                    <input className="auto" disabled value={bagSum ?? ""} />
+                  </div>
+                </div>
+              ) : item.back_loose_formula === "bag_count" ? (
+                <div className="row">
+                  <div className="w105">
+                    <div className="name">Loose</div>
+                  </div>
+                  <div className="field w70">
+                    <div className="lbl">Bag</div>
+                    <NumericInput
+                      value={entry?.open_bags ?? null}
+                      onChange={(v) =>
+                        setBack(item.id, {
+                          open_bags: v,
+                          loose_extra: entry?.loose_extra ?? null,
+                          box_count: entry?.box_count ?? null,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              ) : hasBagFactor ? (
                 <div className="row">
                   <div className="w105">
                     <div className="name">Loose</div>
                   </div>
                   <div className="field w44">
                     <div className="lbl">Bags</div>
-                    <input
-                      inputMode="numeric"
-                      value={entry?.open_bags ?? ""}
-                      onChange={(e) =>
+                    <NumericInput
+                      value={entry?.open_bags ?? null}
+                      onChange={(v) =>
                         setBack(item.id, {
-                          open_bags: e.target.value === "" ? null : Number(e.target.value),
+                          open_bags: v,
+                          loose_extra: entry?.loose_extra ?? null,
                           box_count: entry?.box_count ?? null,
                         })
                       }
@@ -92,12 +162,12 @@ export default function BackPage() {
                   </div>
                   <div className="field w70">
                     <div className="lbl">Units</div>
-                    <input
-                      inputMode="numeric"
-                      value={entry?.open_bags ?? ""}
-                      onChange={(e) =>
+                    <NumericInput
+                      value={entry?.open_bags ?? null}
+                      onChange={(v) =>
                         setBack(item.id, {
-                          open_bags: e.target.value === "" ? null : Number(e.target.value),
+                          open_bags: v,
+                          loose_extra: entry?.loose_extra ?? null,
                           box_count: entry?.box_count ?? null,
                         })
                       }
@@ -113,13 +183,13 @@ export default function BackPage() {
                   </div>
                   <div className="field w44">
                     <div className="lbl">Boxes</div>
-                    <input
-                      inputMode="numeric"
-                      value={entry?.box_count ?? ""}
-                      onChange={(e) =>
+                    <NumericInput
+                      value={entry?.box_count ?? null}
+                      onChange={(v) =>
                         setBack(item.id, {
                           open_bags: entry?.open_bags ?? null,
-                          box_count: e.target.value === "" ? null : Number(e.target.value),
+                          loose_extra: entry?.loose_extra ?? null,
+                          box_count: v,
                         })
                       }
                     />
@@ -137,7 +207,20 @@ export default function BackPage() {
                 </div>
               )}
 
-              {checkParts.length > 0 && (
+              {item.back_loose_formula === "stack_box" && (
+                <div className="check">
+                  {entry?.open_bags ?? 0} × {item.unopened_stack_size ?? 4} + {entry?.loose_extra ?? 0} ={" "}
+                  {bagSum ?? 0} {item.unit}
+                </div>
+              )}
+
+              {item.back_loose_formula === "bag_count" && (
+                <div className="check">
+                  ({bagSum ?? 0} + {boxSum ?? 0}) × {item.bag_size_g ?? 1} = {entry?.total ?? 0} {item.unit}
+                </div>
+              )}
+
+              {item.back_loose_formula !== "bag_count" && checkParts.length > 0 && (
                 <div className="check">
                   {checkParts.join(" + ")} = {entry?.total ?? 0} {item.unit}
                 </div>

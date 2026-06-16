@@ -33,6 +33,30 @@ function emptyRecord(date: string): DailyRecord {
   };
 }
 
+const COUNTING_KEY = "luckin_counting";
+
+function loadStoredRecord(date: string): DailyRecord | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(COUNTING_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { date: string; record: DailyRecord };
+    if (parsed.date !== date) return null;
+    return parsed.record;
+  } catch {
+    return null;
+  }
+}
+
+function saveRecord(date: string, record: DailyRecord): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(COUNTING_KEY, JSON.stringify({ date, record }));
+  } catch {
+    // ignore
+  }
+}
+
 interface CountingState {
   date: string | null;
   record: DailyRecord | null;
@@ -42,7 +66,7 @@ interface CountingState {
   loadDate: (date: string) => void;
   runSelfCheck: () => void;
 
-  setBack: (itemId: string, partial: Pick<BackEntry, "open_bags" | "box_count">) => void;
+  setBack: (itemId: string, partial: Pick<BackEntry, "open_bags" | "box_count" | "loose_extra">) => void;
   setFront: (itemId: string, partial: Pick<FrontEntry, "box_count">) => void;
   setMaterialLoss: (
     itemId: string,
@@ -61,6 +85,8 @@ interface CountingState {
       | "box_count"
       | "unopened_stacks"
       | "unopened_loose_pcs"
+      | "container_id"
+      | "gross_weight"
     > & {
       whipping_cream?: WhippingCreamCalc | null;
     }
@@ -76,8 +102,10 @@ export const useCountingStore = create<CountingState>((set, get) => ({
   selfCheckRan: false,
 
   loadDate: (date) => {
-    // TODO: replace with Supabase fetch; falls back to a fresh draft.
-    set({ date, record: emptyRecord(date), selfCheckWarnings: [], selfCheckRan: false });
+    // TODO: replace with Supabase fetch; falls back to the locally
+    // persisted draft for this date, or a fresh empty draft.
+    const record = loadStoredRecord(date) ?? emptyRecord(date);
+    set({ date, record, selfCheckWarnings: [], selfCheckRan: false });
   },
 
   runSelfCheck: () => {
@@ -97,6 +125,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     const entry = calcBack(item, partial);
     set({ record: { ...record, back: { ...record.back, [itemId]: entry } } });
     get().recomputeSheet2();
+    saveRecord(get().date!, get().record!);
   },
 
   setFront: (itemId, partial) => {
@@ -109,6 +138,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     const entry = calcFront(item, partial);
     set({ record: { ...record, front: { ...record.front, [itemId]: entry } } });
     get().recomputeSheet2();
+    saveRecord(get().date!, get().record!);
   },
 
   setMaterialLoss: (itemId, partial) => {
@@ -141,18 +171,20 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     }
 
     set({ record: { ...record, material_loss } });
+    saveRecord(get().date!, get().record!);
   },
 
   setClosing: (itemId, partial) => {
     const { record } = get();
     if (!record) return;
-    const { items } = useItemsStore.getState();
+    const { items, containers } = useItemsStore.getState();
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
-    const entry = calcClosing(item, partial);
+    const entry = calcClosing(item, partial, { containers });
     set({ record: { ...record, closing: { ...record.closing, [itemId]: entry } } });
     get().recomputeSheet2();
+    saveRecord(get().date!, get().record!);
   },
 
   recomputeSheet2: () => {

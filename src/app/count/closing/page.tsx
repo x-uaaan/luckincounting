@@ -5,6 +5,8 @@ import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import { calcWhippingCream } from "@/lib/calculations";
 import type { ClosingEntry, WhippingCreamCalc } from "@/lib/types";
+import CategoryNav, { categoryAnchorId } from "@/components/CategoryNav";
+import NumericInput from "@/components/NumericInput";
 
 const looseLabel: Record<string, string> = {
   weight: "Loose (g/ml)",
@@ -31,6 +33,8 @@ type ClosingPartial = Pick<
   | "box_count"
   | "unopened_stacks"
   | "unopened_loose_pcs"
+  | "container_id"
+  | "gross_weight"
 > & {
   whipping_cream?: WhippingCreamCalc | null;
 };
@@ -47,7 +51,7 @@ export default function ClosingPage() {
 
   const items = allItems
     .filter((i) => i.appears_in.includes("closing"))
-    .sort((a, b) => a.sort_order - b.sort_order);
+    .sort((a, b) => (a.closing_sort_order ?? a.sort_order) - (b.closing_sort_order ?? b.sort_order));
 
   if (!record) return null;
 
@@ -60,6 +64,7 @@ export default function ClosingPage() {
   );
 
   let currentCategory = "";
+  const categories = Array.from(new Set(items.map((i) => i.category)));
 
   return (
     <>
@@ -69,6 +74,8 @@ export default function ClosingPage() {
           {counted} / {items.length}
         </div>
       </div>
+
+      <CategoryNav categories={categories} />
 
       {items.map((item) => {
         const entry = record.closing[item.id];
@@ -83,6 +90,8 @@ export default function ClosingPage() {
           loose_extra: entry?.loose_extra ?? null,
           unopened_stacks: entry?.unopened_stacks ?? null,
           unopened_loose_pcs: entry?.unopened_loose_pcs ?? null,
+          container_id: entry?.container_id ?? null,
+          gross_weight: entry?.gross_weight ?? null,
           loose: entry?.loose ?? null,
           box_count: entry?.box_count ?? null,
           whipping_cream: entry?.whipping_cream ?? null,
@@ -91,8 +100,22 @@ export default function ClosingPage() {
           setClosing(item.id, { ...base, ...partial });
 
         const hasError = errorItemIds.has(item.id);
-        const closingPerBox = item.closing_per_box_pcs ?? item.per_box_pcs;
+        const closingPerBox = item.closing_box_row
+          ? item.closing_per_box_pcs ?? item.per_bag_pcs ?? item.per_box_pcs
+          : null;
         const invBagSize = item.inventory_bag_size_g ?? item.bag_size_g;
+        // (§A.9) Label the "Ctn" row by the unit the factor actually represents:
+        // bottle/bag units (loose_grid items with an explicit closing_per_box_pcs,
+        // identified by the "(bottle)"/"(bag)" suffix on the item name) or admin's
+        // per_bag_pcs (Bag) — otherwise it's a true carton (Ctn).
+        const ctnUnitLabel =
+          item.unit === "bottle" || item.name.endsWith("(bottle)")
+            ? "Bottle"
+            : item.unit === "bag" || item.name.endsWith("(bag)")
+            ? "Bag"
+            : item.closing_per_box_pcs == null && item.per_bag_pcs != null
+            ? "Bag"
+            : "Ctn";
 
         const whippingCream = base.whipping_cream ?? {
           variants: [
@@ -104,12 +127,19 @@ export default function ClosingPage() {
           whippingCream.total_whipping_cream ?? calcWhippingCream(whippingCream).total_whipping_cream;
 
         const checkParts: string[] = [];
+        if (item.closing_inventory_formula === "stack_box" && entry?.non_coffee != null) {
+          checkParts.push(String(entry.non_coffee));
+        }
         if (entry?.loose_sum != null) checkParts.push(entry.loose_sum.toFixed(3));
         if (entry?.box_sum != null) checkParts.push(String(entry.box_sum));
 
         return (
           <div key={item.id}>
-            {showCategory && <div className="category-label">{item.category}</div>}
+            {showCategory && (
+              <div className="category-label" id={categoryAnchorId(item.category)}>
+                {item.category}
+              </div>
+            )}
             <div className={`card ${hasError ? "warn" : ""}`}>
               <div className="card-head">
                 <div>
@@ -131,12 +161,9 @@ export default function ClosingPage() {
                     </div>
                     <div className="field w70">
                       <div className="lbl">Under cabinet</div>
-                      <input
-                        inputMode="numeric"
-                        value={base.under_cabinet ?? ""}
-                        onChange={(e) =>
-                          update({ under_cabinet: e.target.value === "" ? null : Number(e.target.value) })
-                        }
+                      <NumericInput
+                        value={base.under_cabinet ?? null}
+                        onChange={(v) => update({ under_cabinet: v })}
                       />
                     </div>
                     <div className="op">→</div>
@@ -151,7 +178,7 @@ export default function ClosingPage() {
                 </>
               )}
 
-              {item.closing_inventory_formula === "non_coffee" && (
+              {item.closing_inventory_formula === "non_coffee" && !item.closing_container_input && (
                 <>
                   <div className="row">
                     <div className="w105">
@@ -159,12 +186,9 @@ export default function ClosingPage() {
                     </div>
                     <div className="field w70">
                       <div className="lbl">Non-coffee</div>
-                      <input
-                        inputMode="numeric"
-                        value={base.non_coffee ?? ""}
-                        onChange={(e) =>
-                          update({ non_coffee: e.target.value === "" ? null : Number(e.target.value) })
-                        }
+                      <NumericInput
+                        value={base.non_coffee ?? null}
+                        onChange={(v) => update({ non_coffee: v })}
                       />
                     </div>
                     <div className="op">→</div>
@@ -179,6 +203,88 @@ export default function ClosingPage() {
                 </>
               )}
 
+              {(item.closing_inventory_formula === "non_coffee" ||
+                item.closing_inventory_formula === "container_direct" ||
+                item.closing_inventory_formula === "container_plus_loose") &&
+                item.closing_container_input &&
+                (() => {
+                const selectedContainerId = base.container_id ?? item.default_container_id ?? "";
+                const tare = selectedContainerId
+                  ? containers.find((c) => c.id === selectedContainerId)?.tare_g ?? 0
+                  : 0;
+                return (
+                  <>
+                    {item.closing_inventory_formula === "container_plus_loose" && (
+                      <div className="row">
+                        <div className="w105">
+                          <div className="name">Inventory</div>
+                        </div>
+                        <div className="field w70">
+                          <div className="lbl">Loose ({item.unit})</div>
+                          <NumericInput
+                            value={base.loose_extra ?? null}
+                            onChange={(v) => update({ loose_extra: v })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="row">
+                      <div className="w105">
+                        <div className="name">
+                          {item.closing_inventory_formula === "container_plus_loose" ? "" : "Inventory"}
+                        </div>
+                      </div>
+                      <div className="field w105">
+                        <div className="lbl">Container</div>
+                        <select
+                          value={selectedContainerId}
+                          onChange={(e) => update({ container_id: e.target.value || null })}
+                        >
+                          {containers.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} ({c.tare_g})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field w70">
+                        <div className="lbl">Gross wt</div>
+                        <NumericInput
+                          value={base.gross_weight ?? null}
+                          onChange={(v) =>
+                            update({
+                              container_id: selectedContainerId || null,
+                              gross_weight: v,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="op">→</div>
+                      <div className="field w70">
+                        <div className="lbl">Loose (g)</div>
+                        <input className="auto" disabled value={entry?.loose ?? ""} />
+                      </div>
+                    </div>
+                    <div className="check">
+                      {item.closing_inventory_formula === "container_direct" ? (
+                        <>
+                          {base.gross_weight ?? 0} − {tare} = {entry?.loose ?? 0} g
+                        </>
+                      ) : item.closing_inventory_formula === "container_plus_loose" ? (
+                        <>
+                          {base.loose_extra ?? 0} + ({base.gross_weight ?? 0} − {tare}) / {item.bag_size_g} ={" "}
+                          {entry?.loose_sum != null ? entry.loose_sum.toFixed(3) : 0} {item.unit}
+                        </>
+                      ) : (
+                        <>
+                          {invBagSize} − ({base.gross_weight ?? 0} − {tare}) = {entry?.loose ?? 0} g
+                        </>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+
               {item.closing_inventory_formula === "whipping_cream" && (
                 <>
                   <div className="row">
@@ -187,12 +293,9 @@ export default function ClosingPage() {
                     </div>
                     <div className="field w44">
                       <div className="lbl">Stacks</div>
-                      <input
-                        inputMode="numeric"
-                        value={base.unopened_stacks ?? ""}
-                        onChange={(e) =>
-                          update({ unopened_stacks: e.target.value === "" ? null : Number(e.target.value) })
-                        }
+                      <NumericInput
+                        value={base.unopened_stacks ?? null}
+                        onChange={(v) => update({ unopened_stacks: v })}
                       />
                     </div>
                     <div className="op">×</div>
@@ -203,12 +306,9 @@ export default function ClosingPage() {
                     <div className="op">+</div>
                     <div className="field w44">
                       <div className="lbl">Loose pcs</div>
-                      <input
-                        inputMode="numeric"
-                        value={base.unopened_loose_pcs ?? ""}
-                        onChange={(e) =>
-                          update({ unopened_loose_pcs: e.target.value === "" ? null : Number(e.target.value) })
-                        }
+                      <NumericInput
+                        value={base.unopened_loose_pcs ?? null}
+                        onChange={(v) => update({ unopened_loose_pcs: v })}
                       />
                     </div>
                     <div className="op">=</div>
@@ -257,14 +357,11 @@ export default function ClosingPage() {
                           </div>
                           <div className="field w70">
                             <div className="lbl">Total wt</div>
-                            <input
-                              inputMode="numeric"
-                              value={v.total_weight ?? ""}
-                              onChange={(e) => {
+                            <NumericInput
+                              value={v.total_weight ?? null}
+                              onChange={(value) => {
                                 const variants = whippingCream.variants.map((vv, i) =>
-                                  i === idx
-                                    ? { ...vv, total_weight: e.target.value === "" ? null : Number(e.target.value) }
-                                    : vv
+                                  i === idx ? { ...vv, total_weight: value } : vv
                                 );
                                 update({ whipping_cream: { variants, total_whipping_cream: null } });
                               }}
@@ -309,6 +406,69 @@ export default function ClosingPage() {
                 </>
               )}
 
+              {item.closing_inventory_formula === "stack_box" && (
+                <>
+                  <div className="row">
+                    <div className="w105">
+                      <div className="name">Boxes</div>
+                    </div>
+                    <div className="field w44">
+                      <div className="lbl">Stacks</div>
+                      <NumericInput
+                        value={base.unopened_stacks ?? null}
+                        onChange={(v) => update({ unopened_stacks: v })}
+                      />
+                    </div>
+                    <div className="op">×</div>
+                    <div className="field w44">
+                      <div className="lbl">/stack</div>
+                      <div className="const">{item.unopened_stack_size}</div>
+                    </div>
+                    <div className="op">+</div>
+                    <div className="field w44">
+                      <div className="lbl">Extra</div>
+                      <NumericInput
+                        value={base.unopened_loose_pcs ?? null}
+                        onChange={(v) => update({ unopened_loose_pcs: v })}
+                      />
+                    </div>
+                    <div className="op">=</div>
+                    <div className="field w70">
+                      <div className="lbl">Boxes</div>
+                      <input className="auto" disabled value={entry?.non_coffee ?? ""} />
+                    </div>
+                  </div>
+                  {item.bag_size_g != null && (
+                    <div className="row">
+                      <div className="w105">
+                        <div className="name">Loose</div>
+                      </div>
+                      <div className="field w70">
+                        <div className="lbl">Loose (g)</div>
+                        <NumericInput
+                          value={base.loose ?? null}
+                          onChange={(v) => update({ loose: v })}
+                        />
+                      </div>
+                      <div className="op">/</div>
+                      <div className="field w44">
+                        <div className="lbl">/box</div>
+                        <div className="const">{item.bag_size_g}</div>
+                      </div>
+                      <div className="op">=</div>
+                      <div className="field w70">
+                        <div className="lbl">Loose sum</div>
+                        <input
+                          className="auto"
+                          disabled
+                          value={entry?.loose_sum != null ? entry.loose_sum.toFixed(3) : ""}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               {item.loose_grid && (
                 <div className="row">
                   <div className="w105">
@@ -316,34 +476,25 @@ export default function ClosingPage() {
                   </div>
                   <div className="field w44">
                     <div className="lbl">Rows</div>
-                    <input
-                      inputMode="numeric"
-                      value={base.loose_rows ?? ""}
-                      onChange={(e) =>
-                        update({ loose_rows: e.target.value === "" ? null : Number(e.target.value) })
-                      }
+                    <NumericInput
+                      value={base.loose_rows ?? null}
+                      onChange={(v) => update({ loose_rows: v })}
                     />
                   </div>
                   <div className="op">×</div>
                   <div className="field w44">
                     <div className="lbl">Lines</div>
-                    <input
-                      inputMode="numeric"
-                      value={base.loose_lines ?? ""}
-                      onChange={(e) =>
-                        update({ loose_lines: e.target.value === "" ? null : Number(e.target.value) })
-                      }
+                    <NumericInput
+                      value={base.loose_lines ?? null}
+                      onChange={(v) => update({ loose_lines: v })}
                     />
                   </div>
                   <div className="op">+</div>
                   <div className="field w44">
                     <div className="lbl">Loose</div>
-                    <input
-                      inputMode="numeric"
-                      value={base.loose_extra ?? ""}
-                      onChange={(e) =>
-                        update({ loose_extra: e.target.value === "" ? null : Number(e.target.value) })
-                      }
+                    <NumericInput
+                      value={base.loose_extra ?? null}
+                      onChange={(v) => update({ loose_extra: v })}
                     />
                   </div>
                   <div className="op">=</div>
@@ -361,10 +512,9 @@ export default function ClosingPage() {
                   </div>
                   <div className="field w70">
                     <div className="lbl">{looseLabel[item.closing_input_type]}</div>
-                    <input
-                      inputMode="numeric"
-                      value={base.loose ?? ""}
-                      onChange={(e) => update({ loose: e.target.value === "" ? null : Number(e.target.value) })}
+                    <NumericInput
+                      value={base.loose ?? null}
+                      onChange={(v) => update({ loose: v })}
                     />
                   </div>
                   <div className="op">→</div>
@@ -382,19 +532,18 @@ export default function ClosingPage() {
               {closingPerBox != null && (
                 <div className="row">
                   <div className="w105">
-                    <div className="name">Ctn</div>
+                    <div className="name">{ctnUnitLabel}</div>
                   </div>
                   <div className="field w44">
-                    <div className="lbl">Boxes</div>
-                    <input
-                      inputMode="numeric"
-                      value={base.box_count ?? ""}
-                      onChange={(e) => update({ box_count: e.target.value === "" ? null : Number(e.target.value) })}
+                    <div className="lbl">{ctnUnitLabel}s</div>
+                    <NumericInput
+                      value={base.box_count ?? null}
+                      onChange={(v) => update({ box_count: v })}
                     />
                   </div>
                   <div className="op">×</div>
                   <div className="field w44">
-                    <div className="lbl">/box</div>
+                    <div className="lbl">/{ctnUnitLabel.toLowerCase()}</div>
                     <div className="const">{closingPerBox}</div>
                   </div>
                   <div className="op">=</div>

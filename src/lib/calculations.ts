@@ -23,9 +23,18 @@ export function round1(n: number | null | undefined): number | null {
 }
 
 // --- Stage 1: Back ---
-export function calcBack(item: Item, entry: Pick<BackEntry, "open_bags" | "box_count">): BackEntry {
+export function calcBack(
+  item: Item,
+  entry: Pick<BackEntry, "open_bags" | "box_count" | "loose_extra">
+): BackEntry {
   const bag_sum =
-    item.per_bag_pcs == null
+    item.back_loose_formula === "hidden"
+      ? null
+      : item.back_loose_formula === "stack_box"
+      ? entry.open_bags != null || entry.loose_extra != null
+        ? (entry.open_bags ?? 0) * (item.unopened_stack_size ?? 4) + (entry.loose_extra ?? 0)
+        : null
+      : item.per_bag_pcs == null
       ? entry.open_bags ?? null // whole-unit item: enter sum directly via open_bags
       : entry.open_bags != null
       ? entry.open_bags * item.per_bag_pcs
@@ -36,12 +45,16 @@ export function calcBack(item: Item, entry: Pick<BackEntry, "open_bags" | "box_c
       ? entry.box_count * item.per_box_pcs
       : null;
 
+  const rawTotal = sumNullable(bag_sum, box_sum);
+
   return {
     open_bags: entry.open_bags ?? null,
+    loose_extra: entry.loose_extra ?? null,
     bag_sum,
     box_count: entry.box_count ?? null,
     box_sum,
-    total: sumNullable(bag_sum, box_sum),
+    total:
+      item.back_loose_formula === "bag_count" ? rawTotal * (item.bag_size_g ?? 1) : rawTotal,
   };
 }
 
@@ -139,12 +152,17 @@ export function calcClosing(
     | "box_count"
     | "unopened_stacks"
     | "unopened_loose_pcs"
+    | "container_id"
+    | "gross_weight"
   > & {
     whipping_cream?: WhippingCreamCalc | null;
-  }
+  },
+  opts: { containers: Container[] } = { containers: [] }
 ): ClosingEntry {
   let loose = entry.loose ?? null;
   let non_coffee = entry.non_coffee ?? null;
+  let stack_box_sum: number | null = null;
+  let loose_sum_override: number | null | undefined;
 
   // (§A.2/A.7) Whipping Cream's loose is derived from its own canister calculator
   const whippingCream = entry.whipping_cream
@@ -153,18 +171,48 @@ export function calcClosing(
 
   // (§A.7) Closing-inventory items derive `loose` instead of entering it directly
   const invBagSize = item.inventory_bag_size_g ?? item.bag_size_g;
-  if (item.closing_inventory_formula && invBagSize != null) {
-    if (item.closing_inventory_formula === "non_coffee") {
-      loose = invBagSize - (entry.non_coffee ?? 0);
-    } else if (item.closing_inventory_formula === "under_cabinet") {
-      loose = invBagSize - (entry.under_cabinet ?? 0);
-    } else if (item.closing_inventory_formula === "whipping_cream") {
-      // Unopened boxes come in stacks of 4; loose_pcs is the remainder.
-      const totalPcs = (entry.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (entry.unopened_loose_pcs ?? 0);
-      non_coffee = totalPcs;
-      // unopened stock (in boxes) converted to g, plus cream still in canisters
-      loose = non_coffee * (item.bag_size_g ?? 0) + (whippingCream?.total_whipping_cream ?? 0);
+  if (item.closing_inventory_formula === "non_coffee" && invBagSize != null) {
+    // (§A.10) container-tare entry: non_coffee = gross weight - container tare
+    if (item.closing_container_input) {
+      const container = entry.container_id
+        ? opts.containers.find((c) => c.id === entry.container_id) ?? null
+        : null;
+      non_coffee = entry.gross_weight != null ? entry.gross_weight - (container?.tare_g ?? 0) : null;
     }
+    loose = invBagSize - (non_coffee ?? 0);
+  } else if (item.closing_inventory_formula === "container_direct") {
+    // (§A.12) container-tare entry, no inventory-bag subtraction: loose = gross - tare directly
+    const container = entry.container_id
+      ? opts.containers.find((c) => c.id === entry.container_id) ?? null
+      : null;
+    non_coffee = entry.gross_weight != null ? entry.gross_weight - (container?.tare_g ?? 0) : null;
+    loose = non_coffee;
+  } else if (item.closing_inventory_formula === "container_plus_loose") {
+    // (§A.14) loose_sum = [user-entered bag count] + (gross weight - container tare) / bag_size_g
+    const container = entry.container_id
+      ? opts.containers.find((c) => c.id === entry.container_id) ?? null
+      : null;
+    non_coffee = entry.gross_weight != null ? entry.gross_weight - (container?.tare_g ?? 0) : null;
+    loose = non_coffee;
+    const containerBags = non_coffee != null && item.bag_size_g ? non_coffee / item.bag_size_g : null;
+    loose_sum_override =
+      entry.loose_extra != null || containerBags != null
+        ? (entry.loose_extra ?? 0) + (containerBags ?? 0)
+        : null;
+  } else if (item.closing_inventory_formula === "under_cabinet" && invBagSize != null) {
+    loose = invBagSize - (entry.under_cabinet ?? 0);
+  } else if (item.closing_inventory_formula === "whipping_cream" && invBagSize != null) {
+    // Unopened boxes come in stacks of 4; loose_pcs is the remainder.
+    const totalPcs = (entry.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (entry.unopened_loose_pcs ?? 0);
+    non_coffee = totalPcs;
+    // unopened stock (in boxes) converted to g, plus cream still in canisters
+    loose = non_coffee * (item.bag_size_g ?? 0) + (whippingCream?.total_whipping_cream ?? 0);
+  } else if (item.closing_inventory_formula === "stack_box") {
+    // (§A.10) Raw Material: stacked boxes + loose remainder pcs = whole-box count,
+    // plus any partial loose weight (g) converted via bag_size_g.
+    const stackSize = item.unopened_stack_size ?? 0;
+    stack_box_sum = (entry.unopened_stacks ?? 0) * stackSize + (entry.unopened_loose_pcs ?? 0);
+    non_coffee = stack_box_sum;
   } else if (item.loose_grid) {
     // (§A.3) row × line + loose grid entry
     if (entry.loose_rows != null || entry.loose_lines != null || entry.loose_extra != null) {
@@ -173,7 +221,9 @@ export function calcClosing(
   }
 
   let loose_sum: number | null = null;
-  if (loose != null) {
+  if (loose_sum_override !== undefined) {
+    loose_sum = loose_sum_override;
+  } else if (loose != null) {
     if (item.closing_input_type === "weight" && item.bag_size_g) {
       loose_sum = loose / item.bag_size_g;
     } else if (item.closing_input_type === "sleeves" && item.per_bag_pcs) {
@@ -184,7 +234,15 @@ export function calcClosing(
     }
   }
 
-  const closing_per_box_pcs = item.closing_per_box_pcs ?? item.per_box_pcs;
+  // (§A.9/A.10) "1 box/bottle/bag" qty must come from admin item data: closing_per_box_pcs
+  // is only an explicit override (e.g. loose_grid bottle/bag items, where the Ctn
+  // row counts whole bottles/bags = the loose_sum unit, so the factor is always 1).
+  // Plain count items derive their "Bag" factor from admin's per_bag_pcs (falling
+  // back to per_box_pcs for true cartons with no bag breakdown). Items with
+  // closing_box_row === false are "loose only" and never show this row.
+  const closing_per_box_pcs = item.closing_box_row
+    ? item.closing_per_box_pcs ?? item.per_bag_pcs ?? item.per_box_pcs
+    : null;
   const box_sum =
     closing_per_box_pcs != null && entry.box_count != null
       ? entry.box_count * closing_per_box_pcs
@@ -198,11 +256,13 @@ export function calcClosing(
     loose_extra: entry.loose_extra ?? null,
     unopened_stacks: entry.unopened_stacks ?? null,
     unopened_loose_pcs: entry.unopened_loose_pcs ?? null,
+    container_id: entry.container_id ?? null,
+    gross_weight: entry.gross_weight ?? null,
     loose,
     loose_sum,
     box_count: entry.box_count ?? null,
     box_sum,
-    total: sumNullable(loose_sum, box_sum),
+    total: sumNullable(loose_sum, box_sum, stack_box_sum),
     whipping_cream: whippingCream,
   };
 }

@@ -132,6 +132,7 @@ interface ClosingEntry {
 - **Cream / Coconut Cream / Frozen Coconut Juice / SeaSalt Cheese**: `loss_formula: "components"`, summary-only rows on Material Expired (`loss_role: "summary"`), derived from Cheese Cap / Coconut Cheese Cap via `Item.loss_components` (countingflow.md §A.9). Don't confuse these with the Whipping Cream canister calculator (A.4), which is a separate Closing-only concept.
 - **Milk**: `loss_formula: "components"` with its own input (`loss_role: "input_and_summary"`) — result = own weight + Cheese Cap total × 8/15. `useCountingStore.setMaterialLoss` recomputes all dependents whenever Cheese Cap/Coconut Cheese Cap changes.
 - **Pandan**: Loss formula = "multiply", rate = 2/7, default container = jug (same as Matcha Flavoured).
+- **Cheese Cap / Coconut Cheese Cap** (NEW 2026-06-15): `loss_formula: "direct"` but now have `default_container_id: "pitcher"` (286g) — `/count/expired` renders the same container selector + `gross_weight − tare = result` row as `"multiply"` items (the container UI is gated on `default_container_id`, not `loss_formula`), so `total_volume = gross_weight − 286` feeds both the `direct` result and the §A.9 component splits.
 - **Sheet2** is never directly editable — always derived from Back + Front + Closing.
 
 ## A.6.1 Stage page layout — all items on one page (NEW, REVISED)
@@ -150,7 +151,7 @@ Each counting stage page (`/count/back`, `/front`, `/expired`, `/closing`) displ
 - **Tab bar**: the 5 stages — Back, Front, Material Exp, Closing, Final — render as a persistent top tab bar. Switching tabs is **client-side only** (no route change / page reload); each tab's input state is preserved when switching away and back. (Implementation note: still keep `/count/{back,front,expired,closing,result}` as deep-linkable routes, but within a stage the active tab can change via client state without a full navigation.)
 - **Admin button**: pinned top-right of the tab bar on every page. Tapping it opens the Admin panel as an **overlay** (slide-in panel + backdrop) on top of the current tab — it does not navigate away or reload, so in-progress counting input is preserved underneath. Closing the overlay returns to the same tab/state.
 - **Numeric keyboard**: every count/weight input uses `inputmode="numeric"` (whole counts: rows, lines, loose, box count, open bags) or `inputmode="decimal"` (weights in g/ml where fractional values are possible) so mobile devices show the number pad, never the full keyboard.
-- **Autosave**: every input change is autosaved (debounced ~500ms), with a small "Saved" confirmation toast. This replaces/supplements the existing 60s interval autosave (A.2 store) — autosave should fire on both a debounce-after-edit AND the periodic interval.
+- **Autosave**: every input change is saved synchronously to `localStorage["luckin_counting"]` (§A.17) — no debounce/toast yet, just persistence so a reload never loses data; `loadDate` restores it for the current date and resets to empty once the date changes.
 - **Final result tab** (Stage 5 / Sheet2): read-only table of Item × Back × Front × Closing × Total, with a grand-total row and the "Submit for Approval" action. Matches B.6/B.7 — never directly editable, missing stages treated as 0.
 
 ## A.6.3 Minimal-chrome UI conventions (NEW)
@@ -167,7 +168,7 @@ Each counting stage page (`/count/back`, `/front`, `/expired`, `/closing`) displ
 ## A.6.5 Step-by-step row calc (NEW)
 
 - **Back/Front rows** now show the full per-row formula inline as `count × factor = sum`, e.g. "Bags [2] × /bag [300] = Sum [600]" and "Boxes [1] × /box [600] = Sum [600]". The `factor` is a read-only `.const` value sourced from the item's admin record (`per_bag_pcs` / `per_box_pcs`). The card-level `.ref` line was dropped from Back/Front since the factor is now visible directly in each row.
-- **Closing rows**: the existing `rows × lines + loose = loose total` row is unchanged. The Ctn row now also shows `boxes × /box = sum` using a **separate** admin field `closing_per_box_pcs` (e.g. Coffee Beans 8, Matcha 10) — distinct from the Back/Front `per_box_pcs` (600/800), because Closing's storage-box pcs differs from the Back/Front delivery-box pcs.
+- **Closing rows**: the existing `rows × lines + loose = loose total` row is unchanged. The box row shows `units × /unit = sum` where the factor is `closing_per_box_pcs ?? per_bag_pcs ?? per_box_pcs` (§A.10, REVISED 2026-06-15) — sourced from admin's "/bag"/"per box" fields rather than a hidden seed-only `closing_per_box_pcs`. The row label is "Bag"/"Bottle"/"Ctn" depending on which factor/unit applies.
 - **Material Expired rows** already followed this pattern (`total − syrup − tare = cream`, `opened + add = loss total`) and are unchanged.
 - Each card's bottom `.check` line remains as the final roll-up (`row sum + row sum = total`) on Back/Front/Material Expired/Closing. The Final tab does **not** show per-item or grand-total check lines — the result table itself is the final output, with no extra calc description below it.
 
@@ -260,7 +261,8 @@ Each stage shows:
   per_bag_pcs: number | null, // null if "-" (whole unit)
   per_box_pcs: number | null,
   front_per_box_pcs: number | null,   // Front-stage box pcs, may differ from per_box_pcs (§A.8 finding)
-  closing_per_box_pcs: number | null, // Closing-stage storage-box pcs, may differ from per_box_pcs
+  closing_per_box_pcs: number | null, // explicit override for loose_grid bottle/bag items (usually 1);
+                                       // plain count items leave this null and use per_bag_pcs/per_box_pcs (§A.10)
   bag_size_g: number | null,  // for powder/liquid closing loose_sum conversion (loose / bag_size_g)
   inventory_bag_size_g: number | null, // bag size used by closing_inventory_formula; falls back to bag_size_g
   loss_formula: "multiply" | "direct" | "components" | "none",
@@ -283,11 +285,31 @@ Each stage shows:
 
   // (NEW, countingflow.md §A.7) Closing inventory calc — only set for the 13 items
   // whose "loose" is now derived in Closing instead of entered directly.
-  closing_inventory_formula: "non_coffee" | "under_cabinet" | "whipping_cream" | null,
+  closing_inventory_formula: "non_coffee" | "under_cabinet" | "whipping_cream" | "stack_box" | "container_direct" | "container_plus_loose" | null,
   // "non_coffee":     loose = bag_size_g − non_coffee
   // "under_cabinet":  loose = bag_size_g − under_cabinet            (coffee beans)
   // "whipping_cream": loose = bag_size_g − canister(cream total) − non_coffee − cherry(50)
   //   (non_coffee here is derived from unopened_stacks/unopened_loose_pcs, see ClosingEntry below)
+  // "stack_box" (NEW 2026-06-15, §A.11): Raw Material stack+box count, see ClosingEntry below
+  // "container_direct" (NEW 2026-06-15, §A.12): container-tare entry with no inventory-bag
+  //   subtraction — loose = gross_weight − container.tare_g directly (Pistachio Sauce)
+  // "container_plus_loose" (NEW 2026-06-15, §A.13): loose = loose_extra (user-entered) +
+  //   (gross_weight − container.tare_g) — Matcha Flavoured, Original Smoothie
+
+  // (NEW 2026-06-15, countingflow.md §A.11) When true, the "non_coffee" inventory input on
+  // Closing is entered via a container-tare selector (gross weight − container tare)
+  // instead of a raw number. Only meaningful when closing_inventory_formula == "non_coffee".
+  closing_container_input: boolean,
+
+  // (NEW 2026-06-15, countingflow.md §A.11) Stack size for closing_inventory_formula ==
+  // "stack_box" — Raw Material boxes are stacked N-per-stack;
+  // box_total = unopened_stacks * unopened_stack_size + unopened_loose_pcs.
+  unopened_stack_size: number | null,
+
+  // (NEW 2026-06-15, countingflow.md §A.11) Whether Closing shows the Bag/Ctn/Bottle
+  // box-count row at all (§A.10). false = "loose only" (Packaging, Syrup, Soda, Merch,
+  // Coffee Bean, Hanjuku, and several Solid Beverage/Raw Material items, §A.11).
+  closing_box_row: boolean,
 
   notes: string
 }
@@ -312,14 +334,17 @@ Each stage shows:
   front: { [item_id]: { box_count, total } },
   material_loss: { [item_id]: { container_id, gross_weight, total_volume, rate_value, result } },
   // total_volume = gross_weight − container.tare_g (or = gross_weight if no container)
-  closing: { [item_id]: { under_cabinet, non_coffee, loose, loose_sum, box_count, box_sum, total, whipping_cream, unopened_stacks, unopened_loose_pcs } },
+  closing: { [item_id]: { under_cabinet, non_coffee, loose, loose_sum, box_count, box_sum, total, whipping_cream, unopened_stacks, unopened_loose_pcs, container_id, gross_weight } },
   // under_cabinet/non_coffee only used when item.closing_inventory_formula is set (§A.7);
   // otherwise loose is entered directly as before
   // whipping_cream (NEW, countingflow.md §A.2/§A.4): WhippingCreamCalc | null — only set
   // for the Whipping Cream item; feeds its own "whipping_cream" closing_inventory_formula
-  // unopened_stacks/unopened_loose_pcs (NEW, §A.4/§A.7): Whipping Cream only — derives
-  // non_coffee = unopened_stacks*4 + unopened_loose_pcs (pcs, no bag_size_g conversion),
-  // replacing manual entry
+  // unopened_stacks/unopened_loose_pcs (NEW, §A.4/§A.7): Whipping Cream uses these for
+  // non_coffee = unopened_stacks*4 + unopened_loose_pcs (pcs, no bag_size_g conversion);
+  // "stack_box" items (NEW 2026-06-15, §A.11) use the same two fields with
+  // item.unopened_stack_size as the multiplier instead of a fixed 4
+  // container_id/gross_weight (NEW 2026-06-15, §A.11): closing_container_input items —
+  // non_coffee = gross_weight − container.tare_g (container looked up by container_id)
   sheet2: { [item_id]: { back, front, closing, total } },  // computed
   approved_by: string | null,
   approved_at: timestamp | null,
@@ -350,7 +375,10 @@ total_volume = gross_weight − (container.tare_g ?? 0)   // container = Contain
 if loss_formula == "multiply":   result = total_volume × loss_rate
   // (NEW) the input card's row displays this whole chain inline:
   // gross_weight − tare × loss_rate = result (rate shown as a read-only constant)
-if loss_formula == "direct":     result = total_volume                       // Soda, Cheese Cap, Coconut Cheese Cap
+if loss_formula == "direct":     result = total_volume
+  // Soda: no default_container_id -> container is null -> total_volume = gross_weight
+  // Cheese Cap / Coconut Cheese Cap (REVISED 2026-06-15): default_container_id = "pitcher" (286g)
+  // -> total_volume = gross_weight - 286, feeds the §A.9 component splits below
 if loss_formula == "components": result = (total_volume ?? 0) + Σ (componentTotals[c.source_item_id] × c.rate)
                                   // null if no own input AND no component source has a value yet
                                   // Milk, Cream, Coconut Cream, Frozen Coconut Juice, SeaSalt Cheese
@@ -360,16 +388,40 @@ if loss_formula == "none":       result = null
 
 ### Closing — Inventory items (NEW, countingflow.md §A.7)
 
-For items with `closing_inventory_formula` set, `loose` is derived (not entered directly):
+For items with `closing_inventory_formula` set, `loose` (or, for `"stack_box"`, the box total) is derived (not entered directly):
 ```
-if closing_inventory_formula == "non_coffee":     loose = bag_size_g − (non_coffee ?? 0)
-if closing_inventory_formula == "under_cabinet":  loose = bag_size_g − (under_cabinet ?? 0)
+if closing_inventory_formula == "non_coffee":     loose = inventory_bag_size_g − (non_coffee ?? 0)
+  // (NEW 2026-06-15, §A.11) if item.closing_container_input:
+  //   non_coffee = gross_weight − (container.tare_g ?? 0)   (container looked up by container_id)
+  // else non_coffee is entered directly as a number, as before
+if closing_inventory_formula == "under_cabinet":  loose = inventory_bag_size_g − (under_cabinet ?? 0)
 if closing_inventory_formula == "whipping_cream": loose = (non_coffee × bag_size_g) + canister_total
   // canister_total = calcWhippingCream(entry.whipping_cream).total_whipping_cream ?? 0 (§A.4, Closing-only)
   // non_coffee is derived (NEW, §A.4): non_coffee = unopened_stacks*4 + unopened_loose_pcs (pcs, "boxes" count)
   // (REVISED 2026-06-15) the old inventory_bag_size_g(1228) constant and the 50g cherry-allocation subtraction
   // were both removed — non_coffee (unopened boxes) is converted to grams via bag_size_g(1000), then the
   // canister total is added; loose_sum = loose / bag_size_g = non_coffee + canister_total/1000
+if closing_inventory_formula == "stack_box":      // (NEW 2026-06-15, §A.11) Raw Material
+  stack_box_sum = unopened_stacks × item.unopened_stack_size + unopened_loose_pcs
+  non_coffee    = stack_box_sum   // displayed as the "Boxes" total
+  // if item.bag_size_g is set, an additional loose-weight row converts grams to a
+  // fractional box: loose_sum = loose_g / bag_size_g, total = stack_box_sum + loose_sum
+  // (e.g. Coconut). If bag_size_g is null (UHT Milk), total = stack_box_sum only.
+if closing_inventory_formula == "container_direct":  // (NEW 2026-06-15, §A.12) Pistachio Sauce
+  non_coffee = gross_weight − (container?.tare_g ?? 0)
+  loose      = non_coffee   // no inventory_bag_size_g subtraction, unlike "non_coffee"
+  // loose_sum = loose / bag_size_g as usual (e.g. 609 / 300 = 2.030)
+if closing_inventory_formula == "container_plus_loose":  // (NEW 2026-06-15, §A.13/§A.14)
+                                                          // Matcha Flavoured, Original Smoothie
+  non_coffee = gross_weight − (container?.tare_g ?? 0)
+  loose      = non_coffee   // displayed in the disabled "Loose (g)" field
+  container_bags = bag_size_g ? non_coffee / bag_size_g : null
+  loose_sum = (loose_extra ?? 0) + (container_bags ?? 0)
+  // loose_extra is the user-entered "Loose (<unit>)" input, in bag units (NOT grams) —
+  // this bypasses the generic loose/bag_size_g conversion below entirely
+  // null if both loose_extra and gross_weight are unset
+  // e.g. loose_extra=15, gross=520, container=Powder container(191) →
+  //   15 + (520−191)/300 = 15 + 1.097 = 16.097 bag
 ```
 
 ### Closing
@@ -383,9 +435,18 @@ loose_sum = loose_count
   // (was "sleeves" with loose_sum = loose_sleeves × per_bag_pcs(10), which double-counted
   // against the Ctn row's closing_per_box_pcs)
 
-box_sum = box_count × (closing_per_box_pcs ?? per_box_pcs)
-  // Cream Charger: closing_per_box_pcs = 10 (1 sleeve = 10 pcs), so total = loose(pcs) + box_count × 10
-total   = (loose_sum ?? 0) + (box_sum ?? 0)
+box_sum = item.closing_box_row
+  ? box_count × (closing_per_box_pcs ?? per_bag_pcs ?? per_box_pcs)
+  : null
+  // (REVISED 2026-06-15, countingflow.md §A.10) "1 unit" must come from /admin/items:
+  // plain count items (no closing_per_box_pcs) use per_bag_pcs ("/bag" admin field),
+  // falling back to per_box_pcs only for true cartons with no bag breakdown.
+  // loose_grid bottle/bag items keep an explicit closing_per_box_pcs (usually 1,
+  // matching the bag_size_g denominator used by loose_sum).
+  // Cream Charger: per_bag_pcs = 10 (1 sleeve = 10 pcs), so total = loose(pcs) + box_count × 10
+  // (NEW 2026-06-15, §A.11) closing_box_row == false => no Bag/Ctn/Bottle row at all
+  // (Packaging, Syrup, Soda, Merch, Coffee Bean, Hanjuku, and several other items)
+total   = (loose_sum ?? 0) + (box_sum ?? 0) + (stack_box_sum ?? 0)
 ```
 
 ### Sheet2 (Final)
@@ -549,3 +610,17 @@ Admin reviews Sheet2
 | 2026-06-15 | Whipping Cream: removed the leftover `1228` constant (§B.4/§A.7) — it was the old "Section B" inventory bag size from `Counting (1).xlsx`, no longer meaningful after the Unopened/canister split. Formula is now `loose = (non_coffee × bag_size_g(1000)) + canister − cherry(50)`, i.e. unopened stock (in boxes) converted to grams, plus cream currently in canisters, minus the cherry allocation. Removed `inventory_bag_size_g: 1228` from the `whipping_cream` item (`bag_size_g: 1000` used directly); fixed stale "tare weight come from the row's flavour preset" wording in §A.4. Verified via preview: stacks=2/loose=3/canister total=−14 (700−20−694) → `11 × 1000 + (−14) − 50 = 10936 g → 10.936 box` | Claude |
 | 2026-06-15 | Whipping Cream: removed the 50g cherry allocation from `loose` (§B.4/§A.7) — user reported it as wrong. Formula is now `loose = (non_coffee × bag_size_g(1000)) + canister_total`, so `loose_sum = non_coffee + canister_total/1000` (e.g. 11 box unopened + 565g canister → 11.565 box). Updated `calcClosing`'s `whipping_cream` branch, the Closing card's check line, and the `whipping_cream` item's `notes` field | Claude |
 | 2026-06-15 | Two fixes: (1) §A.4 — each whipping-cream canister row now gets a `warn` border + `.warning` message if `cream_weight < 0` (`total_weight < syrup_weight + empty_canister_weight`), added `.canister-block.warn` CSS. (2) §B.4 — Cream Charger's Closing calc (`seedItems.ts`) was double-counting the per-sleeve factor: changed `closing_input_type: "sleeves"` → `"count"` (`loose_sum = loose` pcs directly) and `closing_per_box_pcs: 1` → `10` (1 sleeve = 10 pcs), so `total = loose(pcs) + box_count × 10`. Verified via preview: loose=4, boxes=3 → `4.000 + 30 = 34.000 pcs` | Claude |
+| 2026-06-15 | §A.6/§B.4: Cheese Cap and Coconut Cheese Cap (`loss_formula: "direct"`) now have `default_container_id: "pitcher"` (286g) in `seedItems.ts`, so `/count/expired` shows a container selector + `gross_weight − tare = result` row for them (this UI was already gated on `default_container_id`, not `loss_formula`, so no `expired/page.tsx` change was needed). `total_volume = gross_weight − 286` feeds the §A.9 component splits. Verified via preview: gross=586 → Cheese Cap=300.00g → Cream=100.00g | Claude |
+| 2026-06-15 | New rule (§A.10/§A.6.5/§B.4): Closing's box/bag/bottle factor must always come from `/admin/items`. `calcClosing`'s `box_sum` now uses `closing_per_box_pcs ?? per_bag_pcs ?? per_box_pcs` (was `?? per_box_pcs`). `/count/closing` derives a row label (`ctnUnitLabel`: "Bottle"/"Bag"/"Ctn") from the item's `unit`, its `(bottle)`/`(bag)` name suffix, or whether `per_bag_pcs` is the active factor. Removed mismatched `closing_per_box_pcs` from 13 plain-count items in `seedItems.ts` (24oz Ice Cup, 20oz Double Wall Cup, SOE Hot/Ice Cup/Hot Lid 12oz, D Drinking Lid 12oz, Soda Water, Cream Charger, UHT Milk, Drinking Lid, Common Cup Holder, Cup Sleeve, Flat Lid 16oz, 16oz Ice Cup) so they fall back to `per_bag_pcs`; added `closing_per_box_pcs: 1` to Lime Concentrate/Seasalt Syrup/Caramel Syrup for a consistent "Bottle ×1" row across all 6 Syrup bottle items. Verified via `npx tsc --noEmit` and preview: Flat Lid (per_bag_pcs=100), loose=50, bags=3 → `50 + 3×100 = 350 pcs` | Claude |
+| 2026-06-15 | Closing per-category restructuring (countingflow.md §A.11), per user spec: `Item` gained `closing_box_row: boolean` (hides the Bag/Ctn/Bottle row entirely — "loose only"), `closing_container_input: boolean` (with `closing_inventory_formula: "non_coffee"`, `non_coffee` is derived from a container-tare selector instead of typed directly), and `unopened_stack_size: number \| null` for new `closing_inventory_formula: "stack_box"` (`unopened_stacks × unopened_stack_size + unopened_loose_pcs`, optionally + `loose_g/bag_size_g`). `ClosingEntry` gained `container_id`/`gross_weight`. `calcClosing` now takes `opts: { containers: Container[] }` for the container-tare lookup; `useCountingStore.setClosing` passes `containers` from `useItemsStore`. In `seedItems.ts` (~40 items): Packaging/Syrup/Soda Water/Merch/Coffee Bean/Hanjuku → `closing_box_row: false` (loose only); Pandan/Ceylon Black Tea/Jasmine Tea/Sea Salt Cheese → `closing_inventory_formula: null`, loose only; Blue Velvet Base/Pistachio Sauce/Matcha Flavoured/Original Smoothie → `closing_container_input: true` (container-tare entry, default container TBD via `default_container_id`); Cocoa Flavoured/Matcha 1000 unchanged; Raw Material UHT Milk/Coconut (`unopened_stack_size: 4`) and Velvet Base/Milky Bev/Butter Flavour/Oat Milk (`unopened_stack_size: 2`) → `"stack_box"` (UHT Milk has `bag_size_g: null`, no loose row); Coconut Jelly/Coconut Cream → loose only with `bag_size_g: 1000`. `/count/closing/page.tsx` gained a container-selector block (non_coffee via gross−tare) and a "stack_box" Boxes+Loose block; `/admin/items/page.tsx`'s `handleAdd` updated with the 3 new `Item` fields. Verified via `npx tsc --noEmit` and preview: Coconut stacks=6/extra=3/loose=420g → `27 + 0.420 = 27.420 box`; Blue Velvet Base container=Small pitcher(138)/gross=500 → `595 − (500−138) = 233g → 0.466 bag` | Claude |
+| 2026-06-15 | Closing follow-up corrections (countingflow.md §A.12), per user review of the live page: (1) all 6 Syrup bottle items → `loose_grid: false` (plain "loose ml, no calc" entry, was Rows×Lines+Loose grid). (2) Pistachio Sauce's `non_coffee`/`inventory_bag_size_g(513)` formula was wrong — added new `closing_inventory_formula: "container_direct"` (`loose = non_coffee = gross_weight − container.tare_g` directly, then `loose_sum = loose/bag_size_g`, no inventory-bag subtraction); set `loose_grid: false`, `closing_box_row: false`, `default_container_id: "powder_container"` (was `"squeezer"`), removed unused `inventory_bag_size_g: 513`. `calcClosing` and `/count/closing`'s container-input block (gated on `closing_container_input`, now covering both `"non_coffee"` and `"container_direct"`) updated accordingly. (3) Cocoa Flavoured/Matcha Flavoured/Matcha 1000/Original Smoothie → `closing_box_row: false` (inventory calc unchanged, removed the "×bag" row). (4) all 4 Frozen bottle items → `loose_grid: false` (plain ml input + existing bottle-count row). Verified via `npx tsc --noEmit` and preview: Pistachio gross=800 → `800 − 191 = 609g → 2.030 ml`; Frozen Mix Grape loose=300/bottles=5 → `0.300 + 5 = 5.300 bottle` | Claude |
+| 2026-06-15 | Closing/Front/Back fixes (countingflow.md §A.13), per user review: (1) Matcha Flavoured/Original Smoothie's `"non_coffee"`/`inventory_bag_size_g` (280/280, 268) formula from §A.11 was wrong (arbitrary constants) — replaced with new `closing_inventory_formula: "container_plus_loose"`: `loose = loose_extra (user-entered "Loose (g)") + (gross_weight − container.tare_g)`, `loose_sum = loose/bag_size_g(300)`; removed `inventory_bag_size_g`. `calcClosing` got a new branch and `/count/closing`'s container-input block now renders an extra "Loose (g)" field + updated check line for this formula. (2) Removed `"front"` (and the now-unused `front_per_box_pcs`) from all Solid Beverage (Cocoa Flavoured, Matcha Flavoured, Matcha 1000, Original Smoothie) and Raw Material (Velvet Base, Milky Bev, Butter Flavour, Oat Milk) items — `/count/front` now shows Packaging only. (3) Cream Charger `per_box_pcs` corrected 400 → 360 (1 ctn = 36 sleeves × 10 pcs). Verified via `npx tsc --noEmit` and preview: Matcha Flavoured loose=20/gross=300/container=Jug(281.5) → `20 + (300−281.5) = 38.5g → 0.128 bag`; `/count/front` shows only Packaging; Cream Charger Ctn row shows `/box 360` | Claude |
+| 2026-06-15 | Closing fix (countingflow.md §A.14): the §A.13 `"container_plus_loose"` formula treated "Loose" as grams; corrected so it's entered directly in bag units and added on top of the container conversion: `loose_sum = loose_extra (bags) + (gross_weight − container.tare_g) / bag_size_g`. `calcClosing` now sets `loose_sum` directly for this formula via a `loose_sum_override`, bypassing the generic `loose/bag_size_g` division; `loose` itself still holds `gross_weight − tare` for the disabled display field. `/count/closing`'s "Loose" field label is now `Loose (<item.unit>)` and the check line shows `loose_extra + (gross−tare)/bag_size_g = loose_sum`. Also removed Seasalt Syrup entirely from `seedItems.ts` (the §A.12 loose-only Syrup bottle group is now 5 items: Lime Concentrate, Original/Sakura/Vanilla/Caramel Syrup). Verified via `npx tsc --noEmit` and preview: Matcha Flavoured loose=15/gross=520/container=Powder container(191) → `15 + (520−191)/300 = 16.097 bag`; Seasalt Syrup no longer appears anywhere | Claude |
+| 2026-06-15 | Closing fix (countingflow.md §A.15): Blue Velvet Base's §A.11 `"non_coffee"`/`inventory_bag_size_g(595)` formula was wrong — changed to `closing_inventory_formula: "container_direct"` (same as Pistachio Sauce, §A.12): `loose_sum = (gross_weight − container.tare_g) / bag_size_g(500)`, removed unused `inventory_bag_size_g: 595`. Ceylon Black Tea already used the requested `loose/bag_size_g(300)` plain formula (`closing_inventory_formula: null` per §A.11) — no change needed. Verified via `npx tsc --noEmit` and preview: gross=500, container=Small pitcher(138) → `(500−138)/500 = 0.724 bag` | Claude |
+| 2026-06-15 | Final page reorder + 2 new items (countingflow.md §A.16): `Item` (§B.3) gained `final_sort_order: number \| null` — `/count/result`'s sort now uses `final_sort_order ?? sort_order`, so the Final tab's 53-row order can differ from Back/Front/Closing's category-grouped `sort_order`. Added two new Raw Material items, `coconut_c` ("Coconut C (box)") and `coconut_refreshing` ("Coconut Refreshing (box)"), `appears_in: ["back","closing","sheet2"]`, `unit: "box"`, `per_box_pcs: 12`, `bag_size_g: 1000`; `sort_order` 432/434 keeps them next to Coconut (430) on Back/Closing. `/admin/items` `handleAdd` updated to set `final_sort_order: null` for new items. Verified via `npx tsc --noEmit` and preview: `/count/result` lists Italian Bean … Coconut Plushie (53 rows) in the requested order; `/count/back` shows Coconut C / Coconut Refreshing right after Coconut | Claude |
+| 2026-06-15 | Closing calc fix (countingflow.md §A.16): `coconut_c`'s Closing calc now matches `coconut` (`closing_inventory_formula: "stack_box"`, `unopened_stack_size: 4`, `per_bag_pcs: 30` → Boxes = stacks×4+extra, plus Loose(g)/1000); `coconut_refreshing` already matched `coconut_jelly` (plain `loose/bag_size_g(1000)`, no change needed). Verified via `npx tsc --noEmit` and preview: Coconut C's `/count/closing` card now shows the same Stacks×4+Extra / Loose÷1000 layout as Coconut | Claude |
+| 2026-06-16 | Autosave, category quick-nav, equation inputs (countingflow.md §A.17): `useCountingStore` now persists `record` to `localStorage["luckin_counting"]` as `{date, record}` after every set call, and `loadDate` restores it when the stored date matches today (otherwise starts a fresh empty record) — supersedes the §A.6.2 "TODO: replace with Supabase fetch" stub and gives the daily-reset/autosave behavior. New `CategoryNav` component (`src/components/CategoryNav.tsx`) renders a sticky row of category buttons on Back, Closing, and Final that smooth-scroll to `id="cat-<category>"` anchors. New `NumericInput` component (`src/components/NumericInput.tsx`) + `evalExpression`/`isExpression` (`src/lib/expr.ts`, recursive-descent `+ - * / ()` parser) replace every editable numeric `<input>` on Back, Front, Material Expired, and Closing — typing an expression like `2*3` or `[8+9]` and blurring/Enter commits the computed number. Verified via `npx tsc --noEmit` and preview: `2*3+1` → `7` in a Back input, value persists after `window.location.reload()`, and the Final table now shows category divider rows with working quick-nav | Claude |
+| 2026-06-16 | Back stack_box loose calc + sticky category labels (countingflow.md §A.18): `Item` (§B.3) gained `back_loose_formula: "stack_box" \| null`, `BackEntry` gained `loose_extra: number \| null`. For `uht_milk`/`coconut`/`coconut_c`, `calcBack` now computes the "Loose" row as `Stacks(open_bags) × unopened_stack_size(4) + Extra(loose_extra) = Sum`, matching their Closing `stack_box` formula (was `Bags × per_bag_pcs`). `setBack`'s partial type now includes `loose_extra`. CSS: `.category-label` is `position: sticky; top: 82px` and `.category-nav` is `top: 52px` (was `top: 0`, overlapping the sticky `.topbar` at 0–51.5px) — the active category's label now stays pinned below the topbar/nav while scrolling on Back/Closing/Final. Verified via `npx tsc --noEmit` and preview: UHT Milk Stacks=2/Extra=5 → `13 pack`; "Packaging" label sticks at `top:82px` while scrolling its section | Claude |
+| 2026-06-16 | Back-row fixes (countingflow.md §A.19): `back_loose_formula` (§B.3) gained `"hidden"` — `calcBack` forces `bag_sum: null` and `/count/back` renders no Loose/Count row for these items; the existing "stack_box" branch's second field is relabelled "Loose" (was "Extra"). `ceylon_black_tea` gained `per_bag_pcs: 300` so its Loose row is `Bags × /bag(300) = Sum` (unit is `g`, 1 bag = 300g). `velvet_base`/`milky_bev`/`butter_flavour` set `back_loose_formula: "hidden"` (Back shows only "Ctn"). `coconut_cream` set `back_loose_formula: "stack_box"` (stack size defaults to 4) — Back's row is now `Stacks × /stack(4) + Loose = Sum`. Verified via `npx tsc --noEmit` and preview: Ceylon `Bags × /bag(300) = Sum`; Velvet Base/Milky Bev/Butter Flavour show only "Ctn"; Coconut Cream Stacks=3/Loose=2 → `3 × 4 + 2 = 14 box` | Claude |
+| 2026-06-16 | Ceylon Black Tea Back calc revised again (countingflow.md §A.20, supersedes the same-day §A.19 change): `back_loose_formula` (§B.3) gained `"bag_count"`. `ceylon_black_tea` now has `back_loose_formula: "bag_count"` and `per_bag_pcs: null` again — Back's Loose row is a plain bag-count input (`bag_sum = open_bags` via `calcBack`'s existing whole-unit fallback), Ctn row stays `Boxes × /box(20) = Sum` (in bags), and `calcBack`'s `total` for `"bag_count"` items is `(bag_sum + box_sum) × bag_size_g` — i.e. `(Loose + Ctn×20) × 300`. Verified via `npx tsc --noEmit` and preview: Loose=2, Ctn=1 → `(2 + 20) × 300 = 6600 g` | Claude |
+| 2026-06-16 | §A.21 (countingflow.md §A.21): `Item` (§B.3) gained `closing_sort_order: number | null` — Closing page now sorts by `closing_sort_order ?? sort_order` so Closing can follow a sequence independent of Back. All 52 Back items got new `sort_order` values (10–520) per the custom user sequence (Packaging→Soda Water→Syrup→Solid Beverage→Coffee Bean→Cream Charger→Hanjuku→Frozen→Raw Material→Merch). All 53 Closing items got `closing_sort_order` values (10–530) per a separate user sequence (Merch first, then Syrup/Raw Material/Frozen/Solid Beverage/Soda/Cream Charger/Coffee Bean/Whipping Cream/Hanjuku, then Packaging). `src/data/seedItems.ts` updated; `src/lib/types.ts`, `src/app/count/closing/page.tsx`, and `src/app/admin/items/page.tsx` (handleAdd) updated. Verified via `npx tsc --noEmit`. Part 1 (Packaging per_bag_pcs/per_box_pcs for 9 items) pending | Claude |

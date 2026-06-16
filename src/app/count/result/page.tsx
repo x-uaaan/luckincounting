@@ -1,11 +1,13 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import { round1 } from "@/lib/calculations";
 import { exportSheet2 } from "@/lib/xlsxExport";
+import CategoryNav, { categoryAnchorId } from "@/components/CategoryNav";
 
 const STAGE_LABELS: Record<string, string> = {
   back: "Back",
@@ -26,7 +28,10 @@ export default function ResultPage() {
 
   const items = allItems
     .filter((i) => i.appears_in.includes("sheet2"))
-    .sort((a, b) => a.sort_order - b.sort_order);
+    .sort(
+      (a, b) =>
+        (a.final_sort_order ?? a.sort_order) - (b.final_sort_order ?? b.sort_order)
+    );
 
   if (!record) return null;
 
@@ -42,12 +47,17 @@ export default function ResultPage() {
     grandTotal += entry?.total ?? 0;
   }
 
+  const categories = Array.from(new Set(items.map((i) => i.category)));
+  let currentCategory = "";
+
   return (
     <>
       <div className="summary">
         <div className="label">Total = Back + Front + Closing</div>
         <div className="value">{round1(grandTotal)}</div>
       </div>
+
+      <CategoryNav categories={categories} />
 
       <div className="card">
         <table className="result">
@@ -63,14 +73,25 @@ export default function ResultPage() {
           <tbody>
             {items.map((item) => {
               const entry = record.sheet2[item.id];
+              const showCategory = item.category !== currentCategory;
+              currentCategory = item.category;
               return (
-                <tr key={item.id}>
-                  <td>{item.name}</td>
-                  <td>{round1(entry?.back ?? 0)}</td>
-                  <td>{round1(entry?.front ?? 0)}</td>
-                  <td>{round1(entry?.closing ?? 0)}</td>
-                  <td className="total">{round1(entry?.total ?? 0)}</td>
-                </tr>
+                <Fragment key={item.id}>
+                  {showCategory && (
+                    <tr className="category-row">
+                      <td colSpan={5} id={categoryAnchorId(item.category)}>
+                        {item.category}
+                      </td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td>{item.name}</td>
+                    <td>{round1(entry?.back ?? 0)}</td>
+                    <td>{round1(entry?.front ?? 0)}</td>
+                    <td>{round1(entry?.closing ?? 0)}</td>
+                    <td className="total">{round1(entry?.total ?? 0)}</td>
+                  </tr>
+                </Fragment>
               );
             })}
           </tbody>
