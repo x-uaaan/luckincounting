@@ -18,6 +18,7 @@ import {
   runSelfCheck,
 } from "@/lib/calculations";
 import { fetchRecord, upsertRecord } from "@/lib/recordsRepo";
+import { isSupabaseConfigured } from "@/lib/itemsRepo";
 
 function emptyRecord(date: string): DailyRecord {
   return {
@@ -95,6 +96,7 @@ interface CountingState {
   ) => void;
 
   recomputeSheet2: () => void;
+  syncToCloud: () => Promise<"ok" | "no_record" | "no_supabase">;
 }
 
 export const useCountingStore = create<CountingState>((set, get) => ({
@@ -191,6 +193,14 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     set({ record: { ...record, closing: { ...record.closing, [itemId]: entry } } });
     get().recomputeSheet2();
     saveRecord(get().date!, get().record!);
+  },
+
+  syncToCloud: async () => {
+    const { record, date } = get();
+    if (!record || !date) return "no_record";
+    if (!isSupabaseConfigured()) return "no_supabase";
+    await upsertRecord(record);
+    return "ok";
   },
 
   recomputeSheet2: () => {

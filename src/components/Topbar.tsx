@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCountingStore } from "@/store/useCountingStore";
 
 const STAGES = [
   { slug: "back", label: "Back" },
@@ -15,6 +16,15 @@ const STAGES = [
 export default function Topbar() {
   const pathname = usePathname();
   const [adminOpen, setAdminOpen] = useState(false);
+  const [syncState, setSyncState] = useState<"idle" | "syncing" | "ok" | "err">("idle");
+  const syncToCloud = useCountingStore((s) => s.syncToCloud);
+
+  async function handleSync() {
+    setSyncState("syncing");
+    const result = await syncToCloud();
+    setSyncState(result === "ok" ? "ok" : "err");
+    setTimeout(() => setSyncState("idle"), 2000);
+  }
 
   return (
     <>
@@ -30,6 +40,13 @@ export default function Topbar() {
             );
           })}
         </nav>
+        <button
+          className={`sync-btn ${syncState}`}
+          onClick={handleSync}
+          disabled={syncState === "syncing"}
+        >
+          {syncState === "syncing" ? "Saving…" : syncState === "ok" ? "Saved ✓" : syncState === "err" ? "Error ✕" : "Save"}
+        </button>
         <button className="admin-btn" onClick={() => setAdminOpen(true)}>
           Admin
         </button>
