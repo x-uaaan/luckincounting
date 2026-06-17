@@ -158,10 +158,10 @@ export default function BackPage() {
               ) : (
                 <div className="row">
                   <div className="w105">
-                    <div className="name">Count</div>
+                    <div className="name">{item.unit ? item.unit.charAt(0).toUpperCase() + item.unit.slice(1) : "Count"}</div>
                   </div>
                   <div className="field w70">
-                    <div className="lbl">Units</div>
+                    <div className="lbl">{item.unit ?? "units"}</div>
                     <NumericInput
                       value={entry?.open_bags ?? null}
                       onChange={(v) =>

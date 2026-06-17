@@ -122,6 +122,7 @@ export default function AdminItemsPage() {
       sort_order: maxSort + 10,
       final_sort_order: null,
       closing_sort_order: null,
+      front_sort_order: null,
       appears_in: Array.from(new Set([...draft.appears_in, "sheet2" as Stage])),
       unit: draft.unit.trim() || null,
       per_bag_pcs: null,

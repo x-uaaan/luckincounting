@@ -15,7 +15,7 @@ export default function FrontPage() {
 
   const items = allItems
     .filter((i) => i.appears_in.includes("front"))
-    .sort((a, b) => a.sort_order - b.sort_order);
+    .sort((a, b) => (a.front_sort_order ?? a.sort_order) - (b.front_sort_order ?? b.sort_order));
 
   if (!record) return null;
 

@@ -20,6 +20,9 @@ export interface Item {
   // (NEW §A.21) Closing page display order — falls back to sort_order when null.
   closing_sort_order: number | null;
 
+  // (NEW §A.22) Front page display order — falls back to sort_order when null.
+  front_sort_order: number | null;
+
   appears_in: Stage[];       // which stages this item appears in
 
   unit: string | null; // display unit, e.g. "pcs", "bag", "bottle", "box", "pack", "can", "g"
