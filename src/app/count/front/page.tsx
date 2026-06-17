@@ -36,7 +36,7 @@ export default function FrontPage() {
         return (
           <div key={item.id}>
             {showCategory && <div className="category-label">{item.category}</div>}
-            <div className={`card ${errorItemIds.has(item.id) ? "warn" : ""}`}>
+            <div className={`card ${errorItemIds.has(item.id) || (entry?.total != null && entry.total < 0) ? "warn" : ""}`}>
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>

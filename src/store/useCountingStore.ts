@@ -134,6 +134,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     set({ record: { ...record, back: { ...record.back, [itemId]: entry } } });
     get().recomputeSheet2();
     saveRecord(get().date!, get().record!);
+    get().runSelfCheck();
   },
 
   setFront: (itemId, partial) => {
@@ -147,6 +148,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     set({ record: { ...record, front: { ...record.front, [itemId]: entry } } });
     get().recomputeSheet2();
     saveRecord(get().date!, get().record!);
+    get().runSelfCheck();
   },
 
   setMaterialLoss: (itemId, partial) => {
@@ -180,6 +182,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
 
     set({ record: { ...record, material_loss } });
     saveRecord(get().date!, get().record!);
+    get().runSelfCheck();
   },
 
   setClosing: (itemId, partial) => {
@@ -193,6 +196,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     set({ record: { ...record, closing: { ...record.closing, [itemId]: entry } } });
     get().recomputeSheet2();
     saveRecord(get().date!, get().record!);
+    get().runSelfCheck();
   },
 
   syncToCloud: async () => {

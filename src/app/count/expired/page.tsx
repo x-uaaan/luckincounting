@@ -56,7 +56,7 @@ export default function ExpiredPage() {
         }
 
         return (
-          <div key={item.id} className={`card ${errorItemIds.has(item.id) ? "warn" : ""}`}>
+          <div key={item.id} className={`card ${errorItemIds.has(item.id) || (entry?.result != null && entry.result < 0) ? "warn" : ""}`}>
             <div className="card-head">
               <div>
                 <div className="title">{item.name}</div>

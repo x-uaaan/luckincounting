@@ -99,7 +99,7 @@ export default function ClosingPage() {
         const update = (partial: Partial<ClosingPartial>) =>
           setClosing(item.id, { ...base, ...partial });
 
-        const hasError = errorItemIds.has(item.id);
+        const hasError = errorItemIds.has(item.id) || (entry?.total != null && entry.total < 0);
         const closingPerBox = item.closing_box_row
           ? item.closing_per_box_pcs ?? item.per_bag_pcs ?? item.per_box_pcs
           : null;
@@ -511,7 +511,7 @@ export default function ClosingPage() {
                     <div className="name">Loose</div>
                   </div>
                   <div className="field w70">
-                    <div className="lbl">{looseLabel[item.closing_input_type]}</div>
+                    <div className="lbl">{item.closing_input_type === "count" ? `Loose (${item.unit ?? "pcs"})` : looseLabel[item.closing_input_type]}</div>
                     <NumericInput
                       value={base.loose ?? null}
                       onChange={(v) => update({ loose: v })}
