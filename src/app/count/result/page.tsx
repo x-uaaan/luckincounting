@@ -35,28 +35,11 @@ export default function ResultPage() {
 
   if (!record) return null;
 
-  let grandBack = 0;
-  let grandFront = 0;
-  let grandClosing = 0;
-  let grandTotal = 0;
-  for (const item of items) {
-    const entry = record.sheet2[item.id];
-    grandBack += entry?.back ?? 0;
-    grandFront += entry?.front ?? 0;
-    grandClosing += entry?.closing ?? 0;
-    grandTotal += entry?.total ?? 0;
-  }
-
   const categories = Array.from(new Set(items.map((i) => i.category)));
   let currentCategory = "";
 
   return (
     <>
-      <div className="summary">
-        <div className="label">Total = Back + Front + Closing</div>
-        <div className="value">{round1(grandTotal)}</div>
-      </div>
-
       <CategoryNav categories={categories} />
 
       <div className="card">
@@ -95,15 +78,6 @@ export default function ResultPage() {
               );
             })}
           </tbody>
-          <tfoot>
-            <tr>
-              <td>Grand total</td>
-              <td>{round1(grandBack)}</td>
-              <td>{round1(grandFront)}</td>
-              <td>{round1(grandClosing)}</td>
-              <td className="total">{round1(grandTotal)}</td>
-            </tr>
-          </tfoot>
         </table>
       </div>
 
