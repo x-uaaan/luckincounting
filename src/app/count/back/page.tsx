@@ -37,6 +37,9 @@ export default function BackPage() {
 
         const hasBagFactor = item.per_bag_pcs != null;
         const hasBoxFactor = item.per_box_pcs != null;
+        // Show Ctn row even when per_box_pcs is null for Packaging items that
+        // have per_bag_pcs (per_box_pcs will be filled via admin later).
+        const showCtnRow = hasBoxFactor || (hasBagFactor && item.back_loose_formula == null && item.category === "Packaging");
 
         const bagSum = entry?.bag_sum ?? null;
         const boxSum = entry?.box_sum ?? null;
@@ -176,7 +179,7 @@ export default function BackPage() {
                 </div>
               )}
 
-              {hasBoxFactor && (
+              {showCtnRow && (
                 <div className="row">
                   <div className="w105">
                     <div className="name">Ctn</div>
@@ -197,7 +200,7 @@ export default function BackPage() {
                   <div className="op">×</div>
                   <div className="field w44">
                     <div className="lbl">/box</div>
-                    <div className="const">{item.per_box_pcs}</div>
+                    <div className="const">{item.per_box_pcs ?? "–"}</div>
                   </div>
                   <div className="op">=</div>
                   <div className="field w70">
