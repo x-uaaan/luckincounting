@@ -50,7 +50,7 @@ export async function POST() {
   // Strip unknown columns from items before upsert
   const strippedItems = seedItems.map((item) =>
     Object.fromEntries(
-      Object.entries(item as Record<string, unknown>).filter(([k]) => DB_COLUMNS.has(k))
+      Object.entries(item as unknown as Record<string, unknown>).filter(([k]) => DB_COLUMNS.has(k))
     )
   );
 
