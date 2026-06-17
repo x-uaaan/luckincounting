@@ -393,6 +393,42 @@ body {
   border-bottom: none;
 }
 
+.input-toolbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  background: #1e2333;
+  border-top: 1px solid #2a3047;
+  padding: 6px 12px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  gap: 8px;
+}
+
+.input-toolbar-btn {
+  flex: 1;
+  height: 40px;
+  background: #2a3047;
+  border: none;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 20px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.input-toolbar-btn:active {
+  background: #3a4460;
+}
+
 .app-dark .submit-btn {
   height: 44px;
   border-radius: 10px;
