@@ -102,7 +102,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     set({ items });
     saveLocal(ITEMS_KEY, items);
     void upsertItem(item);
-    logActivity({ action: "add", kind: "item", label: item.name });
+    logActivity({ action: "add", kind: "item", label: item.name, id: item.id });
   },
 
   updateItem: (id, partial) => {
@@ -126,7 +126,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
       saveLocal(DELETED_ITEMS_KEY, deletedItems);
     }
 
-    if (target) logActivity({ action: "delete", kind: "item", label: target.name });
+    if (target) logActivity({ action: "delete", kind: "item", label: target.name, id: target.id });
     void deleteItemRemote(id);
   },
 
@@ -182,7 +182,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     set({ containers });
     saveLocal(CONTAINERS_KEY, containers);
     void upsertContainer(container);
-    logActivity({ action: "add", kind: "container", label: container.name });
+    logActivity({ action: "add", kind: "container", label: container.name, id: container.id });
   },
 
   updateContainer: (id, partial) => {
@@ -198,7 +198,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     const containers = get().containers.filter((c) => c.id !== id);
     set({ containers });
     saveLocal(CONTAINERS_KEY, containers);
-    if (target) logActivity({ action: "delete", kind: "container", label: target.name });
+    if (target) logActivity({ action: "delete", kind: "container", label: target.name, id: target.id });
     void deleteContainerRemote(id);
   },
 

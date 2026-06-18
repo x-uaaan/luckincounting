@@ -3,6 +3,7 @@ export type ActivityEntry = {
   action: "add" | "delete" | "approve" | "reject";
   kind: "item" | "container" | "loss_rate" | "record";
   label: string; // human-readable target name/date
+  id?: string;   // entity ID for cancel operations
 };
 
 const KEY = "luckin_activity";
@@ -27,5 +28,16 @@ export function getActivityLog(): ActivityEntry[] {
     return raw ? (JSON.parse(raw) as ActivityEntry[]) : [];
   } catch {
     return [];
+  }
+}
+
+export function removeActivityEntry(at: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(KEY);
+    const prev: ActivityEntry[] = raw ? (JSON.parse(raw) as ActivityEntry[]) : [];
+    localStorage.setItem(KEY, JSON.stringify(prev.filter((e) => e.at !== at)));
+  } catch {
+    // ignore
   }
 }

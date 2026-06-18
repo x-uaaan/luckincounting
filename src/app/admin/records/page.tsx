@@ -40,7 +40,7 @@ export default function AdminRecordsPage() {
       if (!res.ok || !data.ok) {
         setError(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
       } else {
-        logActivity({ action: "approve", kind: "record", label: date });
+        logActivity({ action: "approve", kind: "record", label: date, id: date });
         setRecords((prev) =>
           prev.map((r) =>
             r.date === date
@@ -62,7 +62,7 @@ export default function AdminRecordsPage() {
     setError(null);
     try {
       await patchRecord(date, { status: "rejected" });
-      logActivity({ action: "reject", kind: "record", label: date });
+      logActivity({ action: "reject", kind: "record", label: date, id: date });
       setRecords((prev) =>
         prev.map((r) => (r.date === date ? { ...r, status: "rejected" } : r))
       );
