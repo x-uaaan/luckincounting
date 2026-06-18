@@ -5,8 +5,7 @@ const SECTIONS = [
   { href: "/admin/items", label: "Items", desc: "Manage items, weights, and calc factors" },
   { href: "/admin/loss", label: "Loss", desc: "Loss-rate fractions for Material Expired items" },
   { href: "/admin/containers", label: "Containers", desc: "Manage container name/tare presets" },
-  { href: "/admin/records", label: "Records", desc: "View and re-open historical daily records" },
-  { href: "/admin/approvals", label: "Approvals", desc: "Pending submissions queue" },
+  { href: "/admin/records", label: "Records", desc: "View, approve, or reject daily submissions" },
   { href: "/admin/settings", label: "Settings", desc: "Loss rates, bag sizes, Google Drive folder" },
 ];
 

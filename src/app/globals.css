@@ -569,6 +569,13 @@ body {
 .app-dark .status-chip.status-draft { background: #334155; color: #94a3b8; }
 .app-dark .status-chip.status-pending_approval { background: #92400e44; color: #fbbf24; }
 .app-dark .status-chip.status-approved { background: #14532d44; color: #4ade80; }
+.app-dark .status-chip.status-rejected { background: #7f1d1d44; color: #f87171; }
+
+.app-dark .admin-btn-sm.reject-btn {
+  background: transparent;
+  border-color: #ef444466;
+  color: #ef4444;
+}
 
 .app-dark .admin-link {
   padding: 8px 10px;

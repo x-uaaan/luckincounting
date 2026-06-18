@@ -40,6 +40,7 @@ export default function ResultPage() {
   const status = record.status;
   const isPending = status === "pending_approval";
   const isApproved = status === "approved";
+  const isRejected = status === "rejected";
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -124,6 +125,15 @@ export default function ResultPage() {
         <button className="submit-btn" disabled style={{ opacity: 0.5 }}>
           Submitted — Awaiting Approval
         </button>
+      ) : isRejected ? (
+        <>
+          <div className="check" style={{ color: "#ef4444", fontWeight: 600 }}>
+            ✕ Submission rejected — please review and resubmit
+          </div>
+          <button className="submit-btn" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? "Submitting…" : "Resubmit for Approval"}
+          </button>
+        </>
       ) : (
         <button className="submit-btn" onClick={handleSubmit} disabled={submitting}>
           {submitting ? "Submitting…" : "Submit for Approval"}

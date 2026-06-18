@@ -177,7 +177,7 @@ export interface Sheet2Entry {
   total: number | null;     // computed = back + front + closing
 }
 
-export type RecordStatus = "draft" | "pending_approval" | "approved";
+export type RecordStatus = "draft" | "pending_approval" | "approved" | "rejected";
 
 export interface DailyRecord {
   date: string; // YYMMDD

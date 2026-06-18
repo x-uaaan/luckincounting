@@ -2,19 +2,20 @@
 
 import { useEffect, useState } from "react";
 import AdminHeader from "@/components/AdminHeader";
-import { fetchAllRecords } from "@/lib/recordsRepo";
+import { fetchAllRecords, patchRecord } from "@/lib/recordsRepo";
 import type { DailyRecord } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
   pending_approval: "Pending",
   approved: "Approved",
+  rejected: "Rejected",
 };
 
 export default function AdminRecordsPage() {
   const [records, setRecords] = useState<DailyRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [approvingDate, setApprovingDate] = useState<string | null>(null);
+  const [busyDate, setBusyDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function AdminRecordsPage() {
   }, []);
 
   async function handleApprove(date: string) {
-    setApprovingDate(date);
+    setBusyDate(date);
     setError(null);
     try {
       const folderId = localStorage.getItem("google_drive_folder_id") ?? undefined;
@@ -36,7 +37,7 @@ export default function AdminRecordsPage() {
       });
       const data = await res.json() as { ok?: boolean; error?: string; fileId?: string };
       if (!res.ok || !data.ok) {
-        setError(data.error ?? "Upload failed");
+        setError(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
       } else {
         setRecords((prev) =>
           prev.map((r) =>
@@ -49,7 +50,23 @@ export default function AdminRecordsPage() {
     } catch {
       setError("Network error");
     } finally {
-      setApprovingDate(null);
+      setBusyDate(null);
+    }
+  }
+
+  async function handleReject(date: string) {
+    if (!window.confirm(`Reject submission for ${date}? The team will be asked to resubmit.`)) return;
+    setBusyDate(date);
+    setError(null);
+    try {
+      await patchRecord(date, { status: "rejected" });
+      setRecords((prev) =>
+        prev.map((r) => (r.date === date ? { ...r, status: "rejected" } : r))
+      );
+    } catch {
+      setError("Network error");
+    } finally {
+      setBusyDate(null);
     }
   }
 
@@ -57,7 +74,7 @@ export default function AdminRecordsPage() {
     <div className="content">
       <AdminHeader title="Records" />
 
-      {error && <p className="check" style={{ color: "#ef4444" }}>{error}</p>}
+      {error && <p className="check" style={{ color: "#ef4444", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{error}</p>}
 
       {loading ? (
         <p className="check">Loading…</p>
@@ -90,17 +107,29 @@ export default function AdminRecordsPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="admin-link"
+                          style={{ display: "inline" }}
                         >
                           View in Drive ↗
                         </a>
+                      ) : r.status === "pending_approval" ? (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            className="admin-btn-sm"
+                            disabled={busyDate === r.date}
+                            onClick={() => handleApprove(r.date)}
+                          >
+                            {busyDate === r.date ? "Uploading…" : "Approve"}
+                          </button>
+                          <button
+                            className="admin-btn-sm reject-btn"
+                            disabled={busyDate === r.date}
+                            onClick={() => handleReject(r.date)}
+                          >
+                            Reject
+                          </button>
+                        </div>
                       ) : (
-                        <button
-                          className="admin-btn-sm"
-                          disabled={approvingDate === r.date}
-                          onClick={() => handleApprove(r.date)}
-                        >
-                          {approvingDate === r.date ? "Uploading…" : "Approve & Save"}
-                        </button>
+                        <span style={{ color: "var(--text-secondary)", fontSize: 12 }}>—</span>
                       )}
                     </td>
                   </tr>
