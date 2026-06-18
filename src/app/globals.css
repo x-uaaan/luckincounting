@@ -81,6 +81,16 @@ body {
   border-color: var(--accent);
   color: var(--accent-strong);
 }
+.app-dark .tab-btn.home-tab {
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, 0.5);
+  margin-right: 6px;
+}
+.app-dark .tab-btn.home-tab.active {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: var(--text-secondary);
+  color: var(--fg);
+}
 .app-dark .admin-btn {
   flex: none;
   font-size: 11px;

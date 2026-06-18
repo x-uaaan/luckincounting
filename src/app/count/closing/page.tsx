@@ -335,7 +335,8 @@ export default function ClosingPage() {
 
                   {whippingCream.variants.map((v, idx) => {
                     const flavourWeight = v.pump_count * v.ml_per_pump;
-                    const cream = v.total_weight != null ? v.total_weight - flavourWeight - v.empty_canister_weight : null;
+                    // Always use the live canisterTare — ignores stale stored value
+                    const cream = v.total_weight != null ? v.total_weight - flavourWeight - canisterTare : null;
                     const tooLight = cream != null && cream < 0;
                     return (
                       <div key={v.id} className={`canister-block ${tooLight ? "warn" : ""}`}>
@@ -377,7 +378,7 @@ export default function ClosingPage() {
                           <div className="op">−</div>
                           <div className="field w44">
                             <div className="lbl">Canister</div>
-                            <div className="const">{v.empty_canister_weight}</div>
+                            <div className="const">{canisterTare}</div>
                           </div>
                           <div className="op">=</div>
                           <div className="field w70">

@@ -104,6 +104,7 @@ export default function Topbar() {
         <Link href="/admin/loss" className="admin-link" onClick={() => setAdminOpen(false)}>Loss</Link>
         <Link href="/admin/containers" className="admin-link" onClick={() => setAdminOpen(false)}>Containers</Link>
         <Link href="/admin/records" className="admin-link" onClick={() => setAdminOpen(false)}>Records</Link>
+        <Link href="/admin/activity" className="admin-link" onClick={() => setAdminOpen(false)}>Activity</Link>
         <Link href="/admin/settings" className="admin-link" onClick={() => setAdminOpen(false)}>Settings</Link>
       </div>
     </>

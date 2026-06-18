@@ -10,6 +10,7 @@ const SECTIONS = [
   { href: "/admin/loss", label: "Loss", desc: "Loss-rate fractions for Material Expired items" },
   { href: "/admin/containers", label: "Containers", desc: "Manage container name/tare presets" },
   { href: "/admin/records", label: "Records", desc: "View, approve, or reject daily submissions" },
+  { href: "/admin/activity", label: "Activity", desc: "Log of all adds, deletes, and approvals" },
   { href: "/admin/settings", label: "Settings", desc: "Google Drive connection and folder" },
 ];
 

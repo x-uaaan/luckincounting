@@ -14,6 +14,8 @@ export default function AdminSettingsPage() {
   const [folderId, setFolderId] = useState("");
   const [disconnecting, setDisconnecting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [reseeding, setReseeding] = useState(false);
+  const [reseedMsg, setReseedMsg] = useState("");
 
   useEffect(() => {
     setEmail(getCookie("google_email"));
@@ -37,6 +39,25 @@ export default function AdminSettingsPage() {
     await fetch("/api/auth/google/disconnect", { method: "POST" });
     setEmail(null);
     setDisconnecting(false);
+  }
+
+  async function handleReseed() {
+    if (!window.confirm("Sync all items from code to Supabase? This will overwrite remote item data.")) return;
+    setReseeding(true);
+    setReseedMsg("");
+    try {
+      const res = await fetch("/api/admin/reseed", { method: "POST" });
+      const data = await res.json() as { ok?: boolean; items?: number; containers?: number; error?: string };
+      if (data.ok) {
+        setReseedMsg(`✓ Synced ${data.items} items, ${data.containers} containers`);
+      } else {
+        setReseedMsg(`Error: ${data.error ?? "unknown"}`);
+      }
+    } catch {
+      setReseedMsg("Network error");
+    } finally {
+      setReseeding(false);
+    }
   }
 
   const isConnected = !!email;
@@ -73,7 +94,7 @@ export default function AdminSettingsPage() {
                 type="text"
                 value={folderId}
                 onChange={(e) => setFolderId(e.target.value)}
-                placeholder="Paste folder ID from Drive URL"
+                placeholder="1fneehkt03kWTortmknSbmd7qP6VNu_Ns"
                 style={{ width: "100%", background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--fg)", borderRadius: 6, padding: "6px 10px" }}
               />
             </div>
@@ -82,6 +103,19 @@ export default function AdminSettingsPage() {
             </button>
           </div>
         )}
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="card-head">
+          <div>
+            <div className="title">Item Data Sync</div>
+            <div className="subtitle">Push latest item definitions from code to Supabase</div>
+          </div>
+          <button className="admin-btn-sm" onClick={handleReseed} disabled={reseeding}>
+            {reseeding ? "Syncing…" : "Sync items"}
+          </button>
+        </div>
+        {reseedMsg && <div className="check" style={{ marginTop: 8 }}>{reseedMsg}</div>}
       </div>
     </div>
   );
