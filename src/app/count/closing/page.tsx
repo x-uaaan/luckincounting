@@ -334,14 +334,11 @@ export default function ClosingPage() {
                   </div>
 
                   {whippingCream.variants.map((v, idx) => {
-                    const syrup = v.pump_count * v.ml_per_pump;
-                    const cream = v.total_weight != null ? v.total_weight - syrup - v.empty_canister_weight : 0;
-                    const tooLight = v.total_weight != null && cream < 0;
+                    const flavourWeight = v.pump_count * v.ml_per_pump;
+                    const cream = v.total_weight != null ? v.total_weight - flavourWeight - v.empty_canister_weight : null;
+                    const tooLight = cream != null && cream < 0;
                     return (
                       <div key={v.id} className={`canister-block ${tooLight ? "warn" : ""}`}>
-                        <div className="ref">
-                          Syrup {syrup} · Container {v.empty_canister_weight}
-                        </div>
                         <div className="row">
                           <div className="field w80">
                             <div className="lbl">Flavour</div>
@@ -361,7 +358,7 @@ export default function ClosingPage() {
                             </select>
                           </div>
                           <div className="field w70">
-                            <div className="lbl">Total wt</div>
+                            <div className="lbl">Gross wt (g)</div>
                             <NumericInput
                               value={v.total_weight ?? null}
                               onChange={(value) => {
@@ -372,18 +369,25 @@ export default function ClosingPage() {
                               }}
                             />
                           </div>
-                          <div className="op">→</div>
-                          <div className="field w70">
-                            <div className="lbl">Cream</div>
-                            <input className="auto" disabled value={v.total_weight != null ? cream : ""} />
+                          <div className="op">−</div>
+                          <div className="field w44">
+                            <div className="lbl">Flavour</div>
+                            <div className="const">{flavourWeight}</div>
                           </div>
-                        </div>
-                        <div className="check">
-                          {v.total_weight ?? 0} − {syrup} − {v.empty_canister_weight} = {v.total_weight != null ? cream : 0} g
+                          <div className="op">−</div>
+                          <div className="field w44">
+                            <div className="lbl">Canister</div>
+                            <div className="const">{v.empty_canister_weight}</div>
+                          </div>
+                          <div className="op">=</div>
+                          <div className="field w70">
+                            <div className="lbl">Cream (g)</div>
+                            <input className="auto" disabled value={cream ?? ""} />
+                          </div>
                         </div>
                         {tooLight && (
                           <div className="warning">
-                            Total wt ({v.total_weight}) is less than syrup + container ({syrup + v.empty_canister_weight}) — cream weight is negative
+                            Cream weight is negative — check gross weight
                           </div>
                         )}
                       </div>

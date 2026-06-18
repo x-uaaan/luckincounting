@@ -61,6 +61,9 @@ export default function Topbar() {
     <>
       <div className="topbar">
         <nav className="tabs">
+          <Link href="/" className={`tab-btn home-tab ${pathname === "/" ? "active" : ""}`}>
+            Home
+          </Link>
           {STAGES.map((stage) => {
             const href = `/count/${stage.slug}`;
             const active = pathname === href;
@@ -97,7 +100,6 @@ export default function Topbar() {
       <div className={`admin-panel ${adminOpen ? "open" : ""}`}>
         <button className="close-btn" onClick={() => setAdminOpen(false)}>✕</button>
         <h2>Admin</h2>
-        <Link href="/count/result" className="admin-link" onClick={() => setAdminOpen(false)}>Final results</Link>
         <Link href="/admin/items" className="admin-link" onClick={() => setAdminOpen(false)}>Items</Link>
         <Link href="/admin/loss" className="admin-link" onClick={() => setAdminOpen(false)}>Loss</Link>
         <Link href="/admin/containers" className="admin-link" onClick={() => setAdminOpen(false)}>Containers</Link>

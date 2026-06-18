@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Item, Container } from "@/lib/types";
 import { seedItems } from "@/data/seedItems";
 import { CONTAINERS } from "@/data/containers";
+import { logActivity } from "@/lib/activityLog";
 import {
   isSupabaseConfigured,
   fetchItems,
@@ -101,6 +102,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     set({ items });
     saveLocal(ITEMS_KEY, items);
     void upsertItem(item);
+    logActivity({ action: "add", kind: "item", label: item.name });
   },
 
   updateItem: (id, partial) => {
@@ -124,6 +126,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
       saveLocal(DELETED_ITEMS_KEY, deletedItems);
     }
 
+    if (target) logActivity({ action: "delete", kind: "item", label: target.name });
     void deleteItemRemote(id);
   },
 
@@ -179,6 +182,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     set({ containers });
     saveLocal(CONTAINERS_KEY, containers);
     void upsertContainer(container);
+    logActivity({ action: "add", kind: "container", label: container.name });
   },
 
   updateContainer: (id, partial) => {
@@ -190,9 +194,11 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   },
 
   deleteContainer: (id) => {
+    const target = get().containers.find((c) => c.id === id);
     const containers = get().containers.filter((c) => c.id !== id);
     set({ containers });
     saveLocal(CONTAINERS_KEY, containers);
+    if (target) logActivity({ action: "delete", kind: "container", label: target.name });
     void deleteContainerRemote(id);
   },
 

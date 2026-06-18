@@ -95,6 +95,8 @@ interface CountingState {
     }
   ) => void;
 
+  startFresh: (date: string) => void;
+  startWithLatest: (date: string) => Promise<void>;
   clearStage: (stage: "back" | "front" | "expired" | "closing") => void;
   submitForApproval: () => Promise<"ok" | "no_record">;
   recomputeSheet2: () => void;
@@ -207,6 +209,25 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     if (!isSupabaseConfigured()) return "no_supabase";
     await upsertRecord(record);
     return "ok";
+  },
+
+  startFresh: (date) => {
+    const fresh = emptyRecord(date);
+    set({ date, record: fresh, selfCheckWarnings: [], selfCheckRan: false });
+    saveRecord(date, fresh);
+  },
+
+  startWithLatest: async (date) => {
+    // Load the most recent record from Supabase and copy its back data into today's fresh record.
+    const { fetchAllRecords } = await import("@/lib/recordsRepo");
+    const all = await fetchAllRecords();
+    const latest = all.find((r) => r.date !== date);
+    const fresh = emptyRecord(date);
+    if (latest) {
+      fresh.back = { ...latest.back };
+    }
+    set({ date, record: fresh, selfCheckWarnings: [], selfCheckRan: false });
+    saveRecord(date, fresh);
   },
 
   clearStage: (stage) => {

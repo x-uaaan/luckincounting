@@ -10,6 +10,7 @@ function numOrNull(value: string): number | null {
 export default function AdminLossPage() {
   const items = useItemsStore((s) => s.items);
   const updateItem = useItemsStore((s) => s.updateItem);
+  const deleteItem = useItemsStore((s) => s.deleteItem);
 
   const HIDDEN_IDS = new Set(["soda_loss", "cheese_cap", "coconut_cheese_cap"]);
   const lossItems = items
@@ -20,7 +21,7 @@ export default function AdminLossPage() {
     <div className="content">
       <AdminHeader title="Loss" />
       <p className="check">
-        All items counted in Material Expired, with their loss-rate fraction (e.g. 0.45 = 45%).
+        Material Expired items — edit name, category, loss rate, or delete.
       </p>
 
       <div className="card">
@@ -31,13 +32,26 @@ export default function AdminLossPage() {
                 <th>Name</th>
                 <th>Category</th>
                 <th>Loss rate</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {lossItems.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.name}</td>
-                  <td>{item.category}</td>
+                  <td>
+                    <input
+                      className="name-input"
+                      value={item.name}
+                      onChange={(e) => updateItem(item.id, { name: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="name-input"
+                      value={item.category}
+                      onChange={(e) => updateItem(item.id, { category: e.target.value })}
+                    />
+                  </td>
                   <td>
                     {item.loss_formula === "multiply" && (
                       <input
@@ -67,6 +81,16 @@ export default function AdminLossPage() {
                         );
                       })}
                     {item.loss_formula === "direct" && "—"}
+                  </td>
+                  <td>
+                    <button
+                      className="admin-btn-sm reject-btn"
+                      onClick={() => {
+                        if (window.confirm(`Delete "${item.name}"?`)) deleteItem(item.id);
+                      }}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}

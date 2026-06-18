@@ -611,6 +611,9 @@ body {
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
 }
 .app-dark .home-link.primary {
   background: var(--accent);
@@ -619,7 +622,34 @@ body {
 .app-dark .home-link.secondary {
   border: 1px solid var(--border);
   color: var(--text-primary);
+  background: transparent;
 }
+.app-dark .home-link:disabled { opacity: 0.5; cursor: default; }
+
+/* ===== Activity log ===== */
+.app-dark .activity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.app-dark .activity-row:last-child { border-bottom: none; }
+.app-dark .activity-action {
+  font-weight: 700;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  flex: none;
+}
+.app-dark .activity-add { background: #14532d44; color: #4ade80; }
+.app-dark .activity-delete { background: #7f1d1d44; color: #f87171; }
+.app-dark .activity-approve { background: #1e3a5f44; color: #60a5fa; }
+.app-dark .activity-reject { background: #92400e44; color: #fbbf24; }
+.app-dark .activity-kind { color: var(--text-secondary); font-size: 11px; flex: none; }
+.app-dark .activity-label { flex: 1; color: var(--text-primary); }
+.app-dark .activity-time { color: var(--text-secondary); font-size: 11px; flex: none; }
 
 /* ===== Admin pages ===== */
 .app-dark .admin-header {
