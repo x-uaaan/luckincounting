@@ -24,11 +24,9 @@ export default function Topbar() {
   const reorderMode = useItemsStore((s) => s.reorderMode);
   const setReorderMode = useItemsStore((s) => s.setReorderMode);
 
-  // Detect double-tap on Admin button — single tap opens panel, double tap toggles reorder
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clickCount = useRef(0);
 
-  // Only show reorder toggle on counting pages
   const slug = pathname?.split("/").pop() ?? "";
   const isCountPage = COUNT_SLUGS.has(slug);
 
@@ -44,16 +42,14 @@ export default function Topbar() {
 
     if (clickCount.current === 1) {
       clickTimer.current = setTimeout(() => {
-        // Single tap — open panel
         setAdminOpen(true);
         clickCount.current = 0;
       }, 300);
     } else {
-      // Double tap — toggle reorder mode (only on count pages)
       if (clickTimer.current) clearTimeout(clickTimer.current);
       clickCount.current = 0;
       if (isCountPage) {
-        setReorderMode(!reorderMode);
+        setReorderMode(true);
       } else {
         setAdminOpen(true);
       }
@@ -74,55 +70,39 @@ export default function Topbar() {
             );
           })}
         </nav>
-        <button
-          className={`sync-btn ${syncState}`}
-          onClick={handleSync}
-          disabled={syncState === "syncing"}
-        >
-          {syncState === "syncing" ? "Saving…" : syncState === "ok" ? "Saved ✓" : syncState === "err" ? "Error ✕" : "Save"}
-        </button>
-        <button
-          className={`admin-btn ${reorderMode ? "reorder-active" : ""}`}
-          onClick={handleAdminClick}
-        >
-          {reorderMode ? "Reorder" : "Admin"}
-        </button>
-      </div>
 
-      {reorderMode && (
-        <div className="reorder-bar">
-          Reorder mode — tap ↑↓ to move cards
-          <button className="reorder-done-btn" onClick={() => setReorderMode(false)}>Done</button>
-        </div>
-      )}
+        {reorderMode ? (
+          <>
+            <button className="sync-btn idle" onClick={handleSync} disabled={syncState === "syncing"}>
+              {syncState === "syncing" ? "Saving…" : syncState === "ok" ? "Saved ✓" : syncState === "err" ? "Error ✕" : "Save"}
+            </button>
+            <button className="admin-btn reorder-active" onClick={() => setReorderMode(false)}>
+              Done
+            </button>
+          </>
+        ) : (
+          <>
+            <button className={`sync-btn ${syncState}`} onClick={handleSync} disabled={syncState === "syncing"}>
+              {syncState === "syncing" ? "Saving…" : syncState === "ok" ? "Saved ✓" : syncState === "err" ? "Error ✕" : "Save"}
+            </button>
+            <button className="admin-btn" onClick={handleAdminClick}>
+              Admin
+            </button>
+          </>
+        )}
+      </div>
 
       <div className={`admin-backdrop ${adminOpen ? "open" : ""}`} onClick={() => setAdminOpen(false)} />
       <div className={`admin-panel ${adminOpen ? "open" : ""}`}>
-        <button className="close-btn" onClick={() => setAdminOpen(false)}>
-          ✕
-        </button>
+        <button className="close-btn" onClick={() => setAdminOpen(false)}>✕</button>
         <h2>Admin</h2>
-        <Link href="/count/result" className="admin-link" onClick={() => setAdminOpen(false)}>
-          Final results
-        </Link>
-        <Link href="/admin/items" className="admin-link" onClick={() => setAdminOpen(false)}>
-          Items
-        </Link>
-        <Link href="/admin/loss" className="admin-link" onClick={() => setAdminOpen(false)}>
-          Loss
-        </Link>
-        <Link href="/admin/containers" className="admin-link" onClick={() => setAdminOpen(false)}>
-          Containers
-        </Link>
-        <Link href="/admin/records" className="admin-link" onClick={() => setAdminOpen(false)}>
-          Records
-        </Link>
-        <Link href="/admin/approvals" className="admin-link" onClick={() => setAdminOpen(false)}>
-          Approvals
-        </Link>
-        <Link href="/admin/settings" className="admin-link" onClick={() => setAdminOpen(false)}>
-          Settings
-        </Link>
+        <Link href="/count/result" className="admin-link" onClick={() => setAdminOpen(false)}>Final results</Link>
+        <Link href="/admin/items" className="admin-link" onClick={() => setAdminOpen(false)}>Items</Link>
+        <Link href="/admin/loss" className="admin-link" onClick={() => setAdminOpen(false)}>Loss</Link>
+        <Link href="/admin/containers" className="admin-link" onClick={() => setAdminOpen(false)}>Containers</Link>
+        <Link href="/admin/records" className="admin-link" onClick={() => setAdminOpen(false)}>Records</Link>
+        <Link href="/admin/approvals" className="admin-link" onClick={() => setAdminOpen(false)}>Approvals</Link>
+        <Link href="/admin/settings" className="admin-link" onClick={() => setAdminOpen(false)}>Settings</Link>
       </div>
     </>
   );

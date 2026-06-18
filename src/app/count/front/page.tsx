@@ -38,7 +38,7 @@ export default function FrontPage() {
         return (
           <div key={item.id}>
             {showCategory && <div className="category-label">{item.category}</div>}
-            <div className={`card ${errorItemIds.has(item.id) || (entry?.total != null && entry.total < 0) ? "warn" : ""}`}>
+            <div className={`card ${reorderMode ? "card-reordering" : (errorItemIds.has(item.id) || (entry?.total != null && entry.total < 0)) ? "warn" : ""}`}>
               {reorderMode && <ReorderButtons item={item} items={items} sortField="front_sort_order" />}
               <div className="card-head">
                 <div>

@@ -435,28 +435,13 @@ body {
   color: #0b0f19;
 }
 
-.reorder-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  background: #f59e0b22;
-  border-bottom: 1px solid #f59e0b55;
-  font-size: 13px;
-  color: #f59e0b;
-  gap: 12px;
+/* Disable all card content while reordering, but keep reorder-btns interactive */
+.card-reordering > *:not(.reorder-btns) {
+  pointer-events: none;
+  opacity: 0.45;
 }
-
-.reorder-done-btn {
-  background: #f59e0b;
-  color: #0b0f19;
-  border: none;
-  border-radius: 8px;
-  padding: 4px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+.card-reordering > .reorder-btns {
+  opacity: 1;
 }
 
 .reorder-btns {

@@ -144,7 +144,7 @@ export default function ClosingPage() {
                 {item.category}
               </div>
             )}
-            <div className={`card ${hasError ? "warn" : ""}`}>
+            <div className={`card ${reorderMode ? "card-reordering" : hasError ? "warn" : ""}`}>
               {reorderMode && <ReorderButtons item={item} items={items} sortField="closing_sort_order" />}
               <div className="card-head">
                 <div>

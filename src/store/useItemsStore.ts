@@ -51,8 +51,7 @@ interface ItemsState {
   restoreItem: (id: string) => void;
   purgeDeletedItem: (id: string) => void;
 
-  // Move item up (-1) or down (+1) within its sorted list on the current page
-  moveItem: (id: string, direction: -1 | 1, sortField: "sort_order" | "closing_sort_order" | "front_sort_order") => void;
+  moveItem: (id: string, direction: number, sortField: "sort_order" | "closing_sort_order" | "front_sort_order") => void;
 
   addContainer: (container: Container) => void;
   updateContainer: (id: string, partial: Partial<Container>) => void;
@@ -171,8 +170,8 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     const otherVal = getVal(other);
 
     // Swap the sort values
-    get().updateItem(id, { [sortField]: otherVal });
-    get().updateItem(other.id, { [sortField]: myVal });
+    get().updateItem(id, { [sortField]: otherVal } as Partial<Item>);
+    get().updateItem(other.id, { [sortField]: myVal } as Partial<Item>);
   },
 
   addContainer: (container) => {
