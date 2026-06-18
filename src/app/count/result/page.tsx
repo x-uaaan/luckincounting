@@ -1,12 +1,11 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import { round1 } from "@/lib/calculations";
-import { exportSheet2 } from "@/lib/xlsxExport";
 import CategoryNav, { categoryAnchorId } from "@/components/CategoryNav";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -24,19 +23,29 @@ export default function ResultPage() {
   const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
   const selfCheckRan = useCountingStore((s) => s.selfCheckRan);
   const runSelfCheck = useCountingStore((s) => s.runSelfCheck);
+  const submitForApproval = useCountingStore((s) => s.submitForApproval);
   const allItems = useItemsStore((s) => s.items);
+
+  const [submitting, setSubmitting] = useState(false);
 
   const items = allItems
     .filter((i) => i.appears_in.includes("sheet2"))
-    .sort(
-      (a, b) =>
-        (a.final_sort_order ?? a.sort_order) - (b.final_sort_order ?? b.sort_order)
-    );
+    .sort((a, b) => (a.final_sort_order ?? a.sort_order) - (b.final_sort_order ?? b.sort_order));
 
   if (!record) return null;
 
   const categories = Array.from(new Set(items.map((i) => i.category)));
   let currentCategory = "";
+
+  const status = record.status;
+  const isPending = status === "pending_approval";
+  const isApproved = status === "approved";
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    await submitForApproval();
+    setSubmitting(false);
+  }
 
   return (
     <>
@@ -107,9 +116,19 @@ export default function ResultPage() {
         <div className="check">Run Self Check to validate all stage calculations.</div>
       )}
 
-      <button className="submit-btn" onClick={() => exportSheet2(record, items)}>
-        Submit for Approval
-      </button>
+      {isApproved ? (
+        <div className="check" style={{ color: "#4ade80", fontWeight: 600 }}>
+          ✓ Approved — saved to Google Drive
+        </div>
+      ) : isPending ? (
+        <button className="submit-btn" disabled style={{ opacity: 0.5 }}>
+          Submitted — Awaiting Approval
+        </button>
+      ) : (
+        <button className="submit-btn" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? "Submitting…" : "Submit for Approval"}
+        </button>
+      )}
     </>
   );
 }

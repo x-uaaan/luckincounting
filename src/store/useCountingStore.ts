@@ -96,6 +96,7 @@ interface CountingState {
   ) => void;
 
   clearStage: (stage: "back" | "front" | "expired" | "closing") => void;
+  submitForApproval: () => Promise<"ok" | "no_record">;
   recomputeSheet2: () => void;
   syncToCloud: () => Promise<"ok" | "no_record" | "no_supabase">;
 }
@@ -215,6 +216,15 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     const updated = { ...record, [storeKey]: {} };
     set({ record: updated });
     saveRecord(date, updated);
+  },
+
+  submitForApproval: async () => {
+    const { record, date } = get();
+    if (!record || !date) return "no_record";
+    const updated = { ...record, status: "pending_approval" as const };
+    set({ record: updated });
+    saveRecord(date, updated);
+    return "ok";
   },
 
   recomputeSheet2: () => {
