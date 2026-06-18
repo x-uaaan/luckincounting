@@ -61,8 +61,10 @@ export default function Topbar() {
     <>
       <div className="topbar">
         <nav className="tabs">
-          <Link href="/" className={`tab-btn home-tab ${pathname === "/" ? "active" : ""}`}>
-            Home
+          <Link href="/" className={`tab-btn home-tab ${pathname === "/" ? "active" : ""}`} aria-label="Home">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
           </Link>
           {STAGES.map((stage) => {
             const href = `/count/${stage.slug}`;

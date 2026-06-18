@@ -290,7 +290,10 @@ export default function ClosingPage() {
                 );
               })()}
 
-              {item.closing_inventory_formula === "whipping_cream" && (
+              {item.closing_inventory_formula === "whipping_cream" && (() => {
+                const unopenedCount = (base.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (base.unopened_loose_pcs ?? 0);
+                const unopenedG = unopenedCount * (item.bag_size_g ?? 0);
+                return (
                 <>
                   <div className="row">
                     <div className="w105">
@@ -317,25 +320,14 @@ export default function ClosingPage() {
                       />
                     </div>
                     <div className="op">=</div>
-                    <div className="field w70">
-                      <div className="lbl">Non-coffee</div>
-                      <input className="auto" disabled value={entry?.non_coffee ?? 0} />
+                    <div className="field w44">
+                      <div className="lbl">pcs</div>
+                      <input className="auto" disabled value={unopenedCount} />
                     </div>
-                  </div>
-                  <div className="check">
-                    {base.unopened_stacks ?? 0} × {UNOPENED_STACK_SIZE} + {base.unopened_loose_pcs ?? 0} = {entry?.non_coffee ?? 0} pcs
-                  </div>
-
-                  <div className="row">
-                    <div className="w105">
-                      <div className="name">Canister total</div>
-                    </div>
-                    <div className="total">{totalCream ?? 0} g</div>
                   </div>
 
                   {whippingCream.variants.map((v, idx) => {
                     const flavourWeight = v.pump_count * v.ml_per_pump;
-                    // Always use the live canisterTare — ignores stale stored value
                     const cream = v.total_weight != null ? v.total_weight - flavourWeight - canisterTare : null;
                     const tooLight = cream != null && cream < 0;
                     return (
@@ -354,8 +346,8 @@ export default function ClosingPage() {
                                 update({ whipping_cream: { variants, total_whipping_cream: null } });
                               }}
                             >
-                              <option value="vanilla">Vanilla</option>
-                              <option value="sakura">Sakura</option>
+                              <option value="vanilla">Vanilla (20)</option>
+                              <option value="sakura">Sakura (50)</option>
                             </select>
                           </div>
                           <div className="field w70">
@@ -411,10 +403,14 @@ export default function ClosingPage() {
                   </button>
 
                   <div className="check">
-                    {entry?.non_coffee ?? 0} × {item.bag_size_g} + canister({totalCream ?? 0}) = {entry?.loose ?? 0} g
+                    Total canister cream: {totalCream ?? 0} g
+                  </div>
+                  <div className="check">
+                    {totalCream ?? 0} + {unopenedCount} × {item.bag_size_g} ({unopenedG} g) = {entry?.loose ?? 0} g
                   </div>
                 </>
-              )}
+                );
+              })()}
 
               {item.closing_inventory_formula === "stack_box" && (
                 <>
@@ -527,15 +523,27 @@ export default function ClosingPage() {
                       onChange={(v) => update({ loose: v })}
                     />
                   </div>
-                  <div className="op">→</div>
-                  <div className="field w70">
-                    <div className="lbl">Loose sum</div>
-                    <input
-                      className="auto"
-                      disabled
-                      value={entry?.loose_sum != null ? entry.loose_sum.toFixed(3) : ""}
-                    />
-                  </div>
+                  {item.closing_input_type === "count" ? (
+                    <>
+                      <div className="op">=</div>
+                      <div className="field w70">
+                        <div className="lbl">{item.unit ?? "pcs"}</div>
+                        <input className="auto" disabled value={base.loose ?? ""} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="op">→</div>
+                      <div className="field w70">
+                        <div className="lbl">Loose sum</div>
+                        <input
+                          className="auto"
+                          disabled
+                          value={entry?.loose_sum != null ? entry.loose_sum.toFixed(3) : ""}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
