@@ -544,6 +544,32 @@ body {
   cursor: pointer;
   line-height: 1;
 }
+/* Small inline action button for tables */
+.app-dark .admin-btn-sm {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.app-dark .admin-btn-sm:disabled { opacity: 0.5; cursor: default; }
+
+/* Record status chips */
+.app-dark .status-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.app-dark .status-chip.status-draft { background: #334155; color: #94a3b8; }
+.app-dark .status-chip.status-pending_approval { background: #92400e44; color: #fbbf24; }
+.app-dark .status-chip.status-approved { background: #14532d44; color: #4ade80; }
+
 .app-dark .admin-link {
   padding: 8px 10px;
   border: 1px solid var(--border);

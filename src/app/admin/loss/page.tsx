@@ -11,8 +11,9 @@ export default function AdminLossPage() {
   const items = useItemsStore((s) => s.items);
   const updateItem = useItemsStore((s) => s.updateItem);
 
+  const HIDDEN_IDS = new Set(["soda_loss", "cheese_cap", "coconut_cheese_cap"]);
   const lossItems = items
-    .filter((i) => i.appears_in.includes("expired"))
+    .filter((i) => i.appears_in.includes("expired") && !HIDDEN_IDS.has(i.id))
     .sort((a, b) => a.sort_order - b.sort_order);
 
   return (
