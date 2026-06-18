@@ -12,17 +12,34 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChan
 const OPERATORS = ["+", "-", "×", "÷"];
 const OP_INSERT: Record<string, string> = { "+": "+", "-": "-", "×": "*", "÷": "/" };
 
-// Numeric input that also accepts arithmetic expressions, e.g. "2*3",
-// "8+9", "[12.5/2]". The expression is evaluated on blur/Enter and replaced
-// with its numeric result.
 export default function NumericInput({ value, onChange, ...rest }: Props) {
   const [text, setText] = useState(value == null ? "" : String(value));
   const [focused, setFocused] = useState(false);
+  const [toolbarBottom, setToolbarBottom] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!focused) setText(value == null ? "" : String(value));
   }, [value, focused]);
+
+  // Keep toolbar just above the virtual keyboard using Visual Viewport API
+  useEffect(() => {
+    if (!focused) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      // Distance from bottom of layout viewport to bottom of visual viewport
+      setToolbarBottom(window.innerHeight - vv.height - vv.offsetTop);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [focused]);
 
   const commit = () => {
     const trimmed = text.trim();
@@ -48,7 +65,6 @@ export default function NumericInput({ value, onChange, ...rest }: Props) {
     const end = el.selectionEnd ?? text.length;
     const next = text.slice(0, start) + ins + text.slice(end);
     setText(next);
-    // Restore cursor position after React re-render
     requestAnimationFrame(() => {
       el.focus();
       el.setSelectionRange(start + ins.length, start + ins.length);
@@ -60,7 +76,13 @@ export default function NumericInput({ value, onChange, ...rest }: Props) {
       <input
         {...rest}
         ref={inputRef}
-        inputMode="text"
+        inputMode="decimal"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        data-lpignore="true"
+        data-form-type="other"
         value={text}
         onChange={(e) => setText(e.target.value)}
         onFocus={() => setFocused(true)}
@@ -77,14 +99,13 @@ export default function NumericInput({ value, onChange, ...rest }: Props) {
       />
       {focused && typeof document !== "undefined" &&
         createPortal(
-          <div className="input-toolbar">
+          <div className="input-toolbar" style={{ bottom: toolbarBottom }}>
             {OPERATORS.map((op) => (
               <button
                 key={op}
                 className="input-toolbar-btn"
-                // onPointerDown to fire before blur on both mouse and touch
                 onPointerDown={(e) => {
-                  e.preventDefault(); // prevent input blur
+                  e.preventDefault();
                   insertOp(op);
                 }}
               >

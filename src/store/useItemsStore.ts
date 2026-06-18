@@ -14,6 +14,7 @@ import {
 
 const ITEMS_KEY = "luckin_items";
 const CONTAINERS_KEY = "luckin_containers";
+const DELETED_ITEMS_KEY = "luckin_deleted_items";
 
 function loadLocal<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -38,26 +39,39 @@ function saveLocal<T>(key: string, value: T): void {
 interface ItemsState {
   items: Item[];
   containers: Container[];
+  deletedItems: Item[];
   loaded: boolean;
+  reorderMode: boolean;
 
   init: () => Promise<void>;
 
   addItem: (item: Item) => void;
   updateItem: (id: string, partial: Partial<Item>) => void;
   deleteItem: (id: string) => void;
+  restoreItem: (id: string) => void;
+  purgeDeletedItem: (id: string) => void;
+
+  // Move item up (-1) or down (+1) within its sorted list on the current page
+  moveItem: (id: string, direction: -1 | 1, sortField: "sort_order" | "closing_sort_order" | "front_sort_order") => void;
 
   addContainer: (container: Container) => void;
   updateContainer: (id: string, partial: Partial<Container>) => void;
   deleteContainer: (id: string) => void;
+
+  setReorderMode: (on: boolean) => void;
 }
 
 export const useItemsStore = create<ItemsState>((set, get) => ({
   items: seedItems,
   containers: CONTAINERS,
+  deletedItems: [],
   loaded: false,
+  reorderMode: false,
 
   init: async () => {
     if (get().loaded) return;
+
+    const deletedItems = loadLocal<Item[]>(DELETED_ITEMS_KEY, []);
 
     if (isSupabaseConfigured()) {
       let items = await fetchItems();
@@ -72,7 +86,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
         containers = CONTAINERS;
       }
 
-      set({ items, containers, loaded: true });
+      set({ items, containers, deletedItems, loaded: true });
       return;
     }
 
@@ -80,7 +94,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     const containers = loadLocal<Container[]>(CONTAINERS_KEY, CONTAINERS);
     saveLocal(ITEMS_KEY, items);
     saveLocal(CONTAINERS_KEY, containers);
-    set({ items, containers, loaded: true });
+    set({ items, containers, deletedItems, loaded: true });
   },
 
   addItem: (item) => {
@@ -99,10 +113,66 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   },
 
   deleteItem: (id) => {
+    const target = get().items.find((i) => i.id === id);
     const items = get().items.filter((i) => i.id !== id);
     set({ items });
     saveLocal(ITEMS_KEY, items);
+
+    // Save to recently deleted (keep last 20)
+    if (target) {
+      const deletedItems = [target, ...get().deletedItems.filter((i) => i.id !== id)].slice(0, 20);
+      set({ deletedItems });
+      saveLocal(DELETED_ITEMS_KEY, deletedItems);
+    }
+
     void deleteItemRemote(id);
+  },
+
+  restoreItem: (id) => {
+    const target = get().deletedItems.find((i) => i.id === id);
+    if (!target) return;
+    const deletedItems = get().deletedItems.filter((i) => i.id !== id);
+    const items = [...get().items, target];
+    set({ items, deletedItems });
+    saveLocal(ITEMS_KEY, items);
+    saveLocal(DELETED_ITEMS_KEY, deletedItems);
+    void upsertItem(target);
+  },
+
+  purgeDeletedItem: (id) => {
+    const deletedItems = get().deletedItems.filter((i) => i.id !== id);
+    set({ deletedItems });
+    saveLocal(DELETED_ITEMS_KEY, deletedItems);
+  },
+
+  moveItem: (id, direction, sortField) => {
+    const allItems = get().items;
+    const item = allItems.find((i) => i.id === id);
+    if (!item) return;
+
+    // Get items in the same category, sorted by the relevant field
+    const getVal = (i: Item): number =>
+      (sortField === "sort_order"
+        ? i.sort_order
+        : sortField === "closing_sort_order"
+        ? (i.closing_sort_order ?? i.sort_order)
+        : (i.front_sort_order ?? i.sort_order));
+
+    const peers = allItems
+      .filter((i) => i.category === item.category && i.appears_in.some((s) => item.appears_in.includes(s)))
+      .sort((a, b) => getVal(a) - getVal(b));
+
+    const idx = peers.findIndex((i) => i.id === id);
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= peers.length) return;
+
+    const other = peers[swapIdx];
+    const myVal = getVal(item);
+    const otherVal = getVal(other);
+
+    // Swap the sort values
+    get().updateItem(id, { [sortField]: otherVal });
+    get().updateItem(other.id, { [sortField]: myVal });
   },
 
   addContainer: (container) => {
@@ -126,4 +196,6 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     saveLocal(CONTAINERS_KEY, containers);
     void deleteContainerRemote(id);
   },
+
+  setReorderMode: (on) => set({ reorderMode: on }),
 }));

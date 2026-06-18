@@ -4,6 +4,7 @@ import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import NumericInput from "@/components/NumericInput";
+import ReorderButtons from "@/components/ReorderButtons";
 
 export default function FrontPage() {
   useLoadDate();
@@ -12,6 +13,7 @@ export default function FrontPage() {
   const setFront = useCountingStore((s) => s.setFront);
   const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
   const allItems = useItemsStore((s) => s.items);
+  const reorderMode = useItemsStore((s) => s.reorderMode);
 
   const items = allItems
     .filter((i) => i.appears_in.includes("front"))
@@ -37,6 +39,7 @@ export default function FrontPage() {
           <div key={item.id}>
             {showCategory && <div className="category-label">{item.category}</div>}
             <div className={`card ${errorItemIds.has(item.id) || (entry?.total != null && entry.total < 0) ? "warn" : ""}`}>
+              {reorderMode && <ReorderButtons item={item} items={items} sortField="front_sort_order" />}
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>

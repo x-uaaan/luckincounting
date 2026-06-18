@@ -7,12 +7,15 @@ import { calcWhippingCream } from "@/lib/calculations";
 import type { ClosingEntry, WhippingCreamCalc } from "@/lib/types";
 import CategoryNav, { categoryAnchorId } from "@/components/CategoryNav";
 import NumericInput from "@/components/NumericInput";
+import ReorderButtons from "@/components/ReorderButtons";
 
-const looseLabel: Record<string, string> = {
-  weight: "Loose (g/ml)",
-  count: "Loose (pcs)",
-  sleeves: "Open sleeves",
-};
+function getLooseLabel(inputType: string, unit?: string | null): string {
+  if (inputType === "weight") return "Loose (g/ml)";
+  if (inputType === "sleeves") return "Open sleeves";
+  // count — use item unit if meaningful
+  if (unit && unit !== "pcs" && unit !== "g") return `Loose (${unit})`;
+  return "Loose (pcs)";
+}
 
 const FLAVOUR_PRESETS: Record<"vanilla" | "sakura", { name: string; pump_count: number; ml_per_pump: number }> = {
   vanilla: { name: "Vanilla", pump_count: 4, ml_per_pump: 5 },
@@ -46,6 +49,7 @@ export default function ClosingPage() {
   const setClosing = useCountingStore((s) => s.setClosing);
   const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
   const allItems = useItemsStore((s) => s.items);
+  const reorderMode = useItemsStore((s) => s.reorderMode);
   const containers = useItemsStore((s) => s.containers);
   const canisterTare = containers.find((c) => c.id === "canister")?.tare_g ?? 0;
 
@@ -141,6 +145,7 @@ export default function ClosingPage() {
               </div>
             )}
             <div className={`card ${hasError ? "warn" : ""}`}>
+              {reorderMode && <ReorderButtons item={item} items={items} sortField="closing_sort_order" />}
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>
@@ -511,7 +516,7 @@ export default function ClosingPage() {
                     <div className="name">Loose</div>
                   </div>
                   <div className="field w70">
-                    <div className="lbl">{item.closing_input_type === "count" ? `Loose (${item.unit ?? "pcs"})` : looseLabel[item.closing_input_type]}</div>
+                    <div className="lbl">{getLooseLabel(item.closing_input_type, item.unit)}</div>
                     <NumericInput
                       value={base.loose ?? null}
                       onChange={(v) => update({ loose: v })}

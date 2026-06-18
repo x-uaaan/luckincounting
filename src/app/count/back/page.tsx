@@ -5,6 +5,7 @@ import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import CategoryNav, { categoryAnchorId } from "@/components/CategoryNav";
 import NumericInput from "@/components/NumericInput";
+import ReorderButtons from "@/components/ReorderButtons";
 
 export default function BackPage() {
   useLoadDate();
@@ -13,6 +14,7 @@ export default function BackPage() {
   const setBack = useCountingStore((s) => s.setBack);
   const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
   const allItems = useItemsStore((s) => s.items);
+  const reorderMode = useItemsStore((s) => s.reorderMode);
 
   const items = allItems
     .filter((i) => i.appears_in.includes("back"))
@@ -55,6 +57,7 @@ export default function BackPage() {
               </div>
             )}
             <div className={`card ${errorItemIds.has(item.id) || (entry?.total != null && entry.total < 0) ? "warn" : ""}`}>
+              {reorderMode && <ReorderButtons item={item} items={items} sortField="sort_order" />}
               <div className="card-head">
                 <div>
                   <div className="title">{item.name}</div>

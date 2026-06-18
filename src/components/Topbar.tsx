@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCountingStore } from "@/store/useCountingStore";
+import { useItemsStore } from "@/store/useItemsStore";
 
 const STAGES = [
   { slug: "back", label: "Back" },
@@ -13,17 +14,50 @@ const STAGES = [
   { slug: "result", label: "Final" },
 ];
 
+const COUNT_SLUGS = new Set(["back", "front", "expired", "closing", "result"]);
+
 export default function Topbar() {
   const pathname = usePathname();
   const [adminOpen, setAdminOpen] = useState(false);
   const [syncState, setSyncState] = useState<"idle" | "syncing" | "ok" | "err">("idle");
   const syncToCloud = useCountingStore((s) => s.syncToCloud);
+  const reorderMode = useItemsStore((s) => s.reorderMode);
+  const setReorderMode = useItemsStore((s) => s.setReorderMode);
+
+  // Detect double-tap on Admin button — single tap opens panel, double tap toggles reorder
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clickCount = useRef(0);
+
+  // Only show reorder toggle on counting pages
+  const slug = pathname?.split("/").pop() ?? "";
+  const isCountPage = COUNT_SLUGS.has(slug);
 
   async function handleSync() {
     setSyncState("syncing");
     const result = await syncToCloud();
     setSyncState(result === "ok" ? "ok" : "err");
     setTimeout(() => setSyncState("idle"), 2000);
+  }
+
+  function handleAdminClick() {
+    clickCount.current += 1;
+
+    if (clickCount.current === 1) {
+      clickTimer.current = setTimeout(() => {
+        // Single tap — open panel
+        setAdminOpen(true);
+        clickCount.current = 0;
+      }, 300);
+    } else {
+      // Double tap — toggle reorder mode (only on count pages)
+      if (clickTimer.current) clearTimeout(clickTimer.current);
+      clickCount.current = 0;
+      if (isCountPage) {
+        setReorderMode(!reorderMode);
+      } else {
+        setAdminOpen(true);
+      }
+    }
   }
 
   return (
@@ -47,10 +81,20 @@ export default function Topbar() {
         >
           {syncState === "syncing" ? "Saving…" : syncState === "ok" ? "Saved ✓" : syncState === "err" ? "Error ✕" : "Save"}
         </button>
-        <button className="admin-btn" onClick={() => setAdminOpen(true)}>
-          Admin
+        <button
+          className={`admin-btn ${reorderMode ? "reorder-active" : ""}`}
+          onClick={handleAdminClick}
+        >
+          {reorderMode ? "Reorder" : "Admin"}
         </button>
       </div>
+
+      {reorderMode && (
+        <div className="reorder-bar">
+          Reorder mode — tap ↑↓ to move cards
+          <button className="reorder-done-btn" onClick={() => setReorderMode(false)}>Done</button>
+        </div>
+      )}
 
       <div className={`admin-backdrop ${adminOpen ? "open" : ""}`} onClick={() => setAdminOpen(false)} />
       <div className={`admin-panel ${adminOpen ? "open" : ""}`}>
