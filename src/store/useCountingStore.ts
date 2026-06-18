@@ -95,6 +95,7 @@ interface CountingState {
     }
   ) => void;
 
+  clearStage: (stage: "back" | "front" | "expired" | "closing") => void;
   recomputeSheet2: () => void;
   syncToCloud: () => Promise<"ok" | "no_record" | "no_supabase">;
 }
@@ -205,6 +206,15 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     if (!isSupabaseConfigured()) return "no_supabase";
     await upsertRecord(record);
     return "ok";
+  },
+
+  clearStage: (stage) => {
+    const { record, date } = get();
+    if (!record || !date) return;
+    const storeKey = stage === "expired" ? "material_loss" : stage;
+    const updated = { ...record, [storeKey]: {} };
+    set({ record: updated });
+    saveRecord(date, updated);
   },
 
   recomputeSheet2: () => {

@@ -108,6 +108,20 @@ body {
 .app-dark .sync-btn.ok { background: #22c55e; }
 .app-dark .sync-btn.err { background: #ef4444; }
 
+.app-dark .clear-btn {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #ef444466;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.app-dark .clear-btn:disabled { opacity: 0.3; cursor: default; }
+
 /* ===== Page content ===== */
 .app-dark .content {
   flex: 1;

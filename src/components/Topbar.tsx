@@ -15,12 +15,13 @@ const STAGES = [
 ];
 
 const COUNT_SLUGS = new Set(["back", "front", "expired", "closing", "result"]);
+const CLEARABLE_SLUGS = ["back", "front", "expired", "closing"] as const;
+type ClearableSlug = typeof CLEARABLE_SLUGS[number];
 
 export default function Topbar() {
   const pathname = usePathname();
   const [adminOpen, setAdminOpen] = useState(false);
-  const [syncState, setSyncState] = useState<"idle" | "syncing" | "ok" | "err">("idle");
-  const syncToCloud = useCountingStore((s) => s.syncToCloud);
+  const clearStage = useCountingStore((s) => s.clearStage);
   const reorderMode = useItemsStore((s) => s.reorderMode);
   const setReorderMode = useItemsStore((s) => s.setReorderMode);
 
@@ -29,12 +30,12 @@ export default function Topbar() {
 
   const slug = pathname?.split("/").pop() ?? "";
   const isCountPage = COUNT_SLUGS.has(slug);
+  const isClearable = CLEARABLE_SLUGS.includes(slug as ClearableSlug);
 
-  async function handleSync() {
-    setSyncState("syncing");
-    const result = await syncToCloud();
-    setSyncState(result === "ok" ? "ok" : "err");
-    setTimeout(() => setSyncState("idle"), 2000);
+  function handleClear() {
+    if (!isClearable) return;
+    if (!window.confirm("Clear all inputs for this tab?")) return;
+    clearStage(slug as ClearableSlug);
   }
 
   function handleAdminClick() {
@@ -73,8 +74,8 @@ export default function Topbar() {
 
         {reorderMode ? (
           <>
-            <button className="sync-btn idle" onClick={handleSync} disabled={syncState === "syncing"}>
-              {syncState === "syncing" ? "Saving…" : syncState === "ok" ? "Saved ✓" : syncState === "err" ? "Error ✕" : "Save"}
+            <button className="clear-btn" onClick={handleClear} disabled={!isClearable}>
+              Clear
             </button>
             <button className="admin-btn reorder-active" onClick={() => setReorderMode(false)}>
               Done
@@ -82,8 +83,8 @@ export default function Topbar() {
           </>
         ) : (
           <>
-            <button className={`sync-btn ${syncState}`} onClick={handleSync} disabled={syncState === "syncing"}>
-              {syncState === "syncing" ? "Saving…" : syncState === "ok" ? "Saved ✓" : syncState === "err" ? "Error ✕" : "Save"}
+            <button className="clear-btn" onClick={handleClear} disabled={!isClearable}>
+              Clear
             </button>
             <button className="admin-btn" onClick={handleAdminClick}>
               Admin
