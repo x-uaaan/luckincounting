@@ -28,7 +28,10 @@ export async function fetchContainers(): Promise<Container[] | null> {
 export async function upsertItem(item: Item): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const supabase = createClient();
-  await supabase.from("items").upsert(item);
+  // front_sort_order column not yet added to DB schema — strip to avoid PGRST204
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { front_sort_order: _fso, ...dbItem } = item;
+  await supabase.from("items").upsert(dbItem, { onConflict: "id" });
 }
 
 export async function deleteItem(id: string): Promise<void> {

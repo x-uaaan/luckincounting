@@ -4,90 +4,24 @@ import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import NumericInput from "@/components/NumericInput";
+import ReorderButtons from "@/components/ReorderButtons";
 import type { Item } from "@/lib/types";
 
-// One row in the Loss Calc table
-type CalcRow = {
-  productId: string;
-  productName: string;
-  containerId: string | null;
-  materialName: string;      // "-" when product IS the material
-  materialId: string | null; // null for input_and_summary self-reference
-  rate: number;
-  rowspan: number; // >0 on first row of product, 0 on subsequent
-};
-
-function buildCalcRows(items: Item[]): CalcRow[] {
-  const expired = items
-    .filter((i) => i.appears_in.includes("expired"))
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  const inputProducts = expired.filter((i) => i.loss_role === "input");
-  const ias = expired.filter((i) => i.loss_role === "input_and_summary");
-  const summaryItems = expired.filter((i) => i.loss_role === "summary");
-
-  const rows: CalcRow[] = [];
-
-  for (const item of ias) {
-    rows.push({
-      productId: item.id,
-      productName: item.name,
-      containerId: item.default_container_id,
-      materialName: "-",
-      materialId: null,
-      rate: item.loss_rate ?? 0,
-      rowspan: 1,
-    });
-  }
-
-  for (const product of inputProducts) {
-    const mats = summaryItems.filter((m) =>
-      (m.loss_components ?? []).some((c) => c.source_item_id === product.id)
-    );
-
-    if (mats.length === 0) {
-      rows.push({
-        productId: product.id,
-        productName: product.name,
-        containerId: product.default_container_id,
-        materialName: "-",
-        materialId: null,
-        rate: 1,
-        rowspan: 1,
-      });
-      continue;
+function toFraction(n: number): string {
+  if (n === 0) return "0";
+  if (n === 1) return "1";
+  for (let d = 1; d <= 500; d++) {
+    const num = Math.round(n * d);
+    if (Math.abs(num / d - n) < 1e-9) {
+      return num === d ? "1" : `${num}/${d}`;
     }
-
-    rows.push(
-      ...mats.map((mat, mi) => {
-        const comp = (mat.loss_components ?? []).find(
-          (c) => c.source_item_id === product.id
-        );
-        return {
-          productId: product.id,
-          productName: product.name,
-          containerId: product.default_container_id,
-          materialName: mat.name,
-          materialId: mat.id,
-          rate: comp?.rate ?? 0,
-          rowspan: mi === 0 ? mats.length : 0,
-        };
-      })
-    );
   }
-
-  return rows;
+  return n.toPrecision(4).replace(/\.?0+$/, "");
 }
 
-// Summary items: "summary" + "input_and_summary"
-function buildSummaryItems(items: Item[]) {
-  return items
-    .filter(
-      (i) =>
-        i.appears_in.includes("expired") &&
-        (i.loss_role === "summary" || i.loss_role === "input_and_summary")
-    )
-    .sort((a, b) => a.sort_order - b.sort_order);
+function fmt(v: number | null): string {
+  if (v == null || v === 0) return "—";
+  return v % 1 === 0 ? String(v) : v.toFixed(1);
 }
 
 export default function ExpiredPage() {
@@ -96,160 +30,159 @@ export default function ExpiredPage() {
   const record = useCountingStore((s) => s.record);
   const setMaterialLoss = useCountingStore((s) => s.setMaterialLoss);
   const allItems = useItemsStore((s) => s.items);
-  const containers = useItemsStore((s) => s.containers);
+  const reorderMode = useItemsStore((s) => s.reorderMode);
 
   if (!record) return null;
-
   const activeRecord = record;
-  const rows = buildCalcRows(allItems);
-  const summaryItems = buildSummaryItems(allItems);
 
-  // Track which productIds we've already rendered the input cell for
-  const renderedProductIds = new Set<string>();
+  const expiredItems = allItems
+    .filter((i) => i.appears_in.includes("expired"))
+    .sort((a, b) => a.sort_order - b.sort_order);
 
-  function getProductEntry(productId: string) {
-    return activeRecord.material_loss[productId];
+  const products = expiredItems.filter(
+    (i) => i.loss_role === "input_and_summary" || i.loss_role === "input"
+  );
+
+  function getWeight(productId: string): number | null {
+    return activeRecord.material_loss[productId]?.gross_weight ?? null;
   }
 
-  function productTotalVolume(productId: string): number {
-    return getProductEntry(productId)?.total_volume ?? 0;
+  function setWeight(productId: string, v: number | null) {
+    setMaterialLoss(productId, { container_id: null, gross_weight: v, rate_value: null });
   }
 
-  function rowResult(row: CalcRow): number {
-    if (row.materialId) {
-      // for "input" products: contribution = product.total_volume × rate
-      return productTotalVolume(row.productId) * row.rate;
+  // Compute material totals from product inputs
+  // Returns map: inventoryItemId -> total used (g)
+  function computeSummary(): Map<string, number> {
+    const totals = new Map<string, number>();
+
+    for (const product of products) {
+      const weight = getWeight(product.id);
+      if (weight == null) continue;
+
+      if (product.loss_role === "input_and_summary") {
+        // product IS the material; rate from loss_rate
+        const rate = product.loss_rate ?? 0;
+        totals.set(product.id, (totals.get(product.id) ?? 0) + weight * rate);
+      } else {
+        // input product — each loss_component references an inventory item
+        for (const comp of product.loss_components ?? []) {
+          const matId = comp.source_item_id;
+          totals.set(matId, (totals.get(matId) ?? 0) + weight * comp.rate);
+        }
+      }
     }
-    // for "input_and_summary": result is stored directly
-    return getProductEntry(row.productId)?.result ?? 0;
+    return totals;
   }
+
+  const summary = computeSummary();
+
+  // Summary rows: ias items + unique material item IDs from input products
+  const summaryItemIds = new Set<string>();
+  for (const product of products) {
+    if (product.loss_role === "input_and_summary") {
+      summaryItemIds.add(product.id);
+    } else {
+      for (const comp of product.loss_components ?? []) {
+        if (comp.source_item_id) summaryItemIds.add(comp.source_item_id);
+      }
+    }
+  }
+
+  const summaryRows = [...summaryItemIds]
+    .map((id) => ({ id, item: allItems.find((i) => i.id === id), total: summary.get(id) ?? 0 }))
+    .filter((r) => r.item != null) as { id: string; item: Item; total: number }[];
 
   return (
     <>
-      <div className="category-label" style={{ marginTop: 0 }}>Loss Calc</div>
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div className="loss-calc-wrap">
-          <table className="loss-calc-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Weight (g)</th>
-                <th>Material</th>
-                <th>Rate</th>
-                <th>Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const entry = getProductEntry(row.productId);
-                const selectedContainerId =
-                  entry?.container_id ?? row.containerId ?? "";
-                const container = containers.find(
-                  (c) => c.id === selectedContainerId
-                );
-                const tare = container?.tare_g ?? 0;
-                const totalVol = productTotalVolume(row.productId);
-                const result = rowResult(row);
+      {products.map((product) => {
+        const weight = getWeight(product.id);
+        const isIas = product.loss_role === "input_and_summary";
+        const comps = product.loss_components ?? [];
 
-                const isFirstForProduct = row.rowspan > 0;
+        // total result for this product card header
+        let cardTotal: number | null = null;
+        if (weight != null) {
+          if (isIas) {
+            cardTotal = weight * (product.loss_rate ?? 0);
+          } else {
+            cardTotal = comps.reduce((sum, c) => sum + weight * c.rate, 0);
+          }
+        }
 
-                return (
-                  <tr key={`${row.productId}-${i}`}>
-                    {isFirstForProduct && (
-                      <>
-                        <td rowSpan={row.rowspan} className="lc-product-cell">
-                          {row.productName}
-                        </td>
-                        <td rowSpan={row.rowspan} className="lc-input-cell">
-                          <div className="lc-input-wrap">
-                            {row.containerId && (
-                              <div className="lc-container-row">
-                                <select
-                                  className="lc-container-select"
-                                  value={selectedContainerId}
-                                  onChange={(e) =>
-                                    setMaterialLoss(row.productId, {
-                                      container_id: e.target.value || null,
-                                      gross_weight: entry?.gross_weight ?? null,
-                                      rate_value: null,
-                                    })
-                                  }
-                                >
-                                  {containers.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                      {c.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-                            <div className="lc-weight-row">
-                              <NumericInput
-                                value={entry?.gross_weight ?? null}
-                                onChange={(v) =>
-                                  setMaterialLoss(row.productId, {
-                                    container_id: selectedContainerId || null,
-                                    gross_weight: v,
-                                    rate_value: null,
-                                  })
-                                }
-                              />
-                              {row.containerId && tare > 0 && (
-                                <span className="lc-tare">−{tare}</span>
-                              )}
-                            </div>
-                            {row.containerId && (
-                              <div className="lc-total-vol">
-                                = {totalVol.toFixed(1)} g
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </>
-                    )}
-                    <td className="lc-material-cell">
-                      <span className={row.materialName === "-" ? "lc-dash" : ""}>
-                        {row.materialName}
-                      </span>
-                    </td>
-                    <td className="lc-rate-cell">{row.rate}</td>
-                    <td className="lc-result-cell">
-                      {result > 0 ? result.toFixed(2) : "0"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        return (
+          <div key={product.id}>
+            <div className={`card ${reorderMode ? "card-reordering" : ""}`}>
+              {reorderMode && (
+                <ReorderButtons item={product} items={products} sortField="sort_order" />
+              )}
+              <div className="card-head">
+                <div>
+                  <div className="title">{product.name}</div>
+                  <div className="subtitle">{product.unit ?? "g"}</div>
+                </div>
+                <div className="total">
+                  {cardTotal != null ? fmt(cardTotal) : "—"} g
+                </div>
+              </div>
 
+              {/* Weight input row */}
+              <div className="row">
+                <div className="w105">
+                  <div className="name">Weight (g)</div>
+                </div>
+                <div className="field">
+                  <NumericInput
+                    value={weight}
+                    onChange={(v) => setWeight(product.id, v)}
+                  />
+                </div>
+              </div>
+
+              {/* Material rows */}
+              {isIas ? (
+                <div className="row lc-mat-row">
+                  <div className="w105 name lc-mat-name">—</div>
+                  <div className="lc-rate">{toFraction(product.loss_rate ?? 0)}</div>
+                  <div className="lc-result">{weight != null ? fmt(weight * (product.loss_rate ?? 0)) : "—"} g</div>
+                </div>
+              ) : (
+                comps.map((comp, ci) => {
+                  const matItem = allItems.find((i) => i.id === comp.source_item_id);
+                  const result = weight != null ? weight * comp.rate : null;
+                  return (
+                    <div key={ci} className="row lc-mat-row">
+                      <div className="w105 name lc-mat-name">{matItem?.name ?? comp.source_item_id}</div>
+                      <div className="lc-rate">{toFraction(comp.rate)}</div>
+                      <div className="lc-result">{result != null ? fmt(result) : "—"} g</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Loss Summary */}
       <div className="category-label">Loss Summary</div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div className="loss-calc-wrap">
-          <table className="loss-calc-table">
-            <thead>
-              <tr>
-                <th>Material</th>
-                <th>Total (g)</th>
+        <table className="loss-calc-table">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Total (g)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {summaryRows.map(({ id, item, total }) => (
+              <tr key={id}>
+                <td className="lc-product-cell">{item.name}</td>
+                <td className="lc-result-cell">{total > 0 ? fmt(total) : "—"}</td>
               </tr>
-            </thead>
-            <tbody>
-              {summaryItems.map((item) => {
-                const entry = activeRecord.material_loss[item.id];
-                const result = entry?.result ?? 0;
-                return (
-                  <tr key={item.id}>
-                    <td className="lc-product-cell">{item.name}</td>
-                    <td className="lc-result-cell">
-                      {result > 0 ? result.toFixed(2) : "0"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );

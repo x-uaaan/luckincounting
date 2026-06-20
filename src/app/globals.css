@@ -807,16 +807,75 @@ body {
   vertical-align: top;
   padding-top: 10px !important;
 }
-.app-dark .loss-container-cell {
-  font-size: 12px;
-  color: var(--text-secondary);
+.app-dark .loss-move-cell {
   border-right: 1px solid #2e3650;
-  vertical-align: top;
-  padding-top: 10px !important;
+  vertical-align: middle;
+  padding: 4px 6px !important;
+  width: 60px;
 }
+.app-dark .loss-move-btns { display: flex; flex-direction: row; gap: 4px; align-items: center; }
+.app-dark .loss-move-btn {
+  background: #2a3047;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 7px;
+  line-height: 1;
+  border-radius: 6px;
+  touch-action: manipulation;
+}
+.app-dark .loss-move-btn:hover:not(:disabled) { background: #3a4460; color: var(--text-primary); }
+.app-dark .loss-move-btn:disabled { opacity: 0.25; cursor: default; }
 .app-dark .loss-material-cell { font-size: 13px; }
 .app-dark .loss-dash { color: var(--text-secondary); }
 .app-dark .loss-rate-cell { text-align: right; }
+.app-dark .loss-action-cell { text-align: center; white-space: nowrap; }
+.app-dark .loss-name-edit {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  width: 100%;
+  outline: none;
+  padding: 2px 0;
+}
+.app-dark .loss-name-edit:hover { border-bottom-color: #3a4460; }
+.app-dark .loss-name-edit:focus { border-bottom-color: #5a7fff; }
+.app-dark .loss-mat-select {
+  background: #1e2438;
+  border: 1px solid #2e3650;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 4px 6px;
+  max-width: 180px;
+  outline: none;
+}
+.app-dark .loss-mat-select:focus { border-color: #5a7fff; }
+.app-dark .loss-add-comp {
+  background: none;
+  border: 1px solid #3a4460;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  margin: 1px;
+}
+.app-dark .loss-add-comp:hover { background: #2e3650; color: var(--text-primary); }
+.app-dark .loss-rm-comp {
+  background: none;
+  border: none;
+  color: #e05a5a;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 1px 4px;
+  opacity: 0.6;
+}
+.app-dark .loss-rm-comp:hover { opacity: 1; }
 .app-dark .loss-rate-edit {
   background: transparent;
   border: none;
@@ -825,12 +884,43 @@ body {
   font-size: 12px;
   font-family: monospace;
   text-align: right;
-  width: 110px;
+  width: 80px;
   outline: none;
   padding: 2px 0;
 }
 .app-dark .loss-rate-edit:hover { border-bottom-color: #3a4460; }
 .app-dark .loss-rate-edit:focus { border-bottom-color: #5a7fff; }
+
+/* Material Exp card rows */
+.app-dark .lc-mat-row {
+  border-top: 1px solid #2e3650;
+  padding: 6px 16px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-dark .lc-mat-name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-dark .lc-rate {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-secondary);
+  min-width: 40px;
+  text-align: right;
+}
+.app-dark .lc-result {
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 60px;
+  text-align: right;
+}
 
 /* ===== Material Exp — Loss Calc & Summary tables ===== */
 .app-dark .loss-calc-wrap { overflow-x: auto; }

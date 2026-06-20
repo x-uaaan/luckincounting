@@ -859,7 +859,8 @@ export const seedItems: Item[] = [
   },
 
   // ================= Material Expired — Loss-only products (5 inputs) =================
-  // Products = premixes; staff enter remaining weight; materials are back-calculated from these.
+  // Products = premixes; staff enter remaining weight; materials back-calculated via loss_components.
+  // loss_components reference real inventory item IDs so the Loss Summary shows inventory names.
   {
     ...base,
     id: "chocolate",
@@ -871,6 +872,7 @@ export const seedItems: Item[] = [
     loss_formula: "direct",
     loss_role: "input",
     default_container_id: "pitcher",
+    loss_components: [{ source_item_id: "cocoa_flavoured", rate: 1 / 2 }],
   },
   {
     ...base,
@@ -882,6 +884,7 @@ export const seedItems: Item[] = [
     unit: "g",
     loss_formula: "direct",
     loss_role: "input",
+    loss_components: [{ source_item_id: "soda_water", rate: 1 }],
   },
   {
     ...base,
@@ -893,6 +896,7 @@ export const seedItems: Item[] = [
     unit: "g",
     loss_formula: "direct",
     loss_role: "input",
+    loss_components: [{ source_item_id: "uht_milk", rate: 1 }],
   },
   {
     ...base,
@@ -905,6 +909,11 @@ export const seedItems: Item[] = [
     loss_formula: "direct",
     loss_role: "input",
     default_container_id: "pitcher",
+    loss_components: [
+      { source_item_id: "whipping_cream", rate: 5 / 15 },
+      { source_item_id: "uht_milk", rate: 8 / 15 },
+      { source_item_id: "sea_salt_cheese", rate: 2 / 15 },
+    ],
   },
   {
     ...base,
@@ -917,98 +926,10 @@ export const seedItems: Item[] = [
     loss_formula: "direct",
     loss_role: "input",
     default_container_id: "pitcher",
-  },
-
-  // ================= Material Expired — Loss-only materials (7 summaries) =================
-  // Materials = back-calculated from product remaining × rate.
-  {
-    ...base,
-    id: "cocoa_loss",
-    name: "Cocoa",
-    category: "Loss",
-    sort_order: 522,
-    appears_in: ["expired"],
-    unit: "g",
-    loss_formula: "components",
-    loss_components: [{ source_item_id: "chocolate", rate: 1 / 2 }],
-    loss_role: "summary",
-  },
-  {
-    ...base,
-    id: "soda_loss",
-    name: "Soda",
-    category: "Loss",
-    sort_order: 508,
-    appears_in: ["expired"],
-    unit: "g",
-    loss_formula: "components",
-    loss_components: [{ source_item_id: "soda_product", rate: 1 }],
-    loss_role: "summary",
-  },
-  {
-    ...base,
-    id: "milk_loss",
-    name: "Milk",
-    category: "Loss",
-    sort_order: 560,
-    appears_in: ["expired"],
-    unit: "g",
-    loss_formula: "components",
     loss_components: [
-      { source_item_id: "milk_product", rate: 1 },
-      { source_item_id: "cheese_cap", rate: 8 / 15 },
+      { source_item_id: "coconut_cream", rate: 70 / 79 },
+      { source_item_id: "coconut_c", rate: 6 / 79 },
+      { source_item_id: "sea_salt_cheese", rate: 3 / 79 },
     ],
-    loss_role: "summary",
-  },
-  {
-    ...base,
-    id: "sea_salt_cheese_loss",
-    name: "SeaSalt Cheese",
-    category: "Loss",
-    sort_order: 570,
-    appears_in: ["expired"],
-    unit: "g",
-    loss_formula: "components",
-    loss_components: [
-      { source_item_id: "cheese_cap", rate: 2 / 15 },
-      { source_item_id: "coconut_cheese", rate: 3 / 79 },
-    ],
-    loss_role: "summary",
-  },
-  {
-    ...base,
-    id: "whipping_cream_loss",
-    name: "Whipping Cream",
-    category: "Loss",
-    sort_order: 540,
-    appears_in: ["expired"],
-    unit: "g",
-    loss_formula: "components",
-    loss_components: [{ source_item_id: "cheese_cap", rate: 5 / 15 }],
-    loss_role: "summary",
-  },
-  {
-    ...base,
-    id: "coconut_cream_loss",
-    name: "Coconut Cream",
-    category: "Loss",
-    sort_order: 580,
-    appears_in: ["expired"],
-    unit: "g",
-    loss_formula: "components",
-    loss_components: [{ source_item_id: "coconut_cheese", rate: 70 / 79 }],
-    loss_role: "summary",
-  },
-  {
-    ...base,
-    id: "coconut_juice_loss",
-    name: "Coconut juice",
-    category: "Loss",
-    sort_order: 590,
-    appears_in: ["expired"],
-    unit: "g",
-    loss_formula: "components",
-    loss_components: [{ source_item_id: "coconut_cheese", rate: 6 / 79 }],
-    loss_role: "summary",
   },
 ];

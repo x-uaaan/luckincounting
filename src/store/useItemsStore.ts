@@ -207,37 +207,33 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   setReorderMode: (on) => set({ reorderMode: on }),
 
   reseedLossItems: async () => {
-    const lossOnlyIds = new Set(
+    const current = get().items;
+    const seedLossOnlyIds = new Set(
       seedItems.filter((i) => i.appears_in.every((s) => s === "expired")).map((i) => i.id)
     );
-    const current = get().items;
-    // Remove any expired-only item (old or new seed)
-    const expiredOnlyIds = current
-      .filter((i) => i.appears_in.every((s) => s === "expired"))
-      .map((i) => i.id);
-    for (const id of expiredOnlyIds) {
-      await deleteItemRemote(id);
-    }
-    let kept = current.filter((i) => !expiredOnlyIds.includes(i.id));
-    // Patch multi-stage items whose loss config must match new seed
+    // Old summary items no longer in seed — delete them
+    const oldSummaryIds = ["cocoa_loss","soda_loss","milk_loss","sea_salt_cheese_loss","whipping_cream_loss","coconut_cream_loss","coconut_juice_loss"];
+    const toDelete = [
+      ...current.filter((i) => i.appears_in.every((s) => s === "expired") && !seedLossOnlyIds.has(i.id)).map((i) => i.id),
+      ...oldSummaryIds,
+    ];
+    for (const id of [...new Set(toDelete)]) await deleteItemRemote(id);
+
+    let kept = current.filter(
+      (i) => !toDelete.includes(i.id)
+    );
+    // Patch multi-stage items' loss config from seed
     kept = kept.map((item) => {
-      const seedVersion = seedItems.find((s) => s.id === item.id);
-      if (!seedVersion) return item;
-      // Sync loss-related fields from seed if they differ
-      return {
-        ...item,
-        appears_in: seedVersion.appears_in,
-        loss_formula: seedVersion.loss_formula,
-        loss_rate: seedVersion.loss_rate,
-        loss_components: seedVersion.loss_components,
-        loss_role: seedVersion.loss_role,
-      };
+      const sv = seedItems.find((s) => s.id === item.id);
+      if (!sv) return item;
+      return { ...item, appears_in: sv.appears_in, loss_formula: sv.loss_formula, loss_rate: sv.loss_rate, loss_components: sv.loss_components, loss_role: sv.loss_role };
     });
     for (const item of kept) await upsertItem(item);
-    // Add fresh seed loss items
-    const lossSeeds = seedItems.filter((i) => lossOnlyIds.has(i.id));
+
+    const lossSeeds = seedItems.filter((i) => seedLossOnlyIds.has(i.id));
     for (const item of lossSeeds) await upsertItem(item);
-    const items = [...kept, ...lossSeeds];
+
+    const items = [...kept.filter((i) => !seedLossOnlyIds.has(i.id)), ...lossSeeds];
     set({ items });
     saveLocal(ITEMS_KEY, items);
   },
