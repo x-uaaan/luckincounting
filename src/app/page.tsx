@@ -10,10 +10,10 @@ import { todayYYMMDD } from "@/lib/date";
 function hasCountingData(record: ReturnType<typeof useCountingStore.getState>["record"]): boolean {
   if (!record) return false;
   return (
-    Object.values(record.back ?? {}).some((v) => v.total != null) ||
-    Object.values(record.front ?? {}).some((v) => v.total != null) ||
-    Object.values(record.closing ?? {}).some((v) => v.total != null) ||
-    Object.values(record.expired ?? {}).some((v) => v.total != null)
+    Object.values(record.back ?? {}).some((v) => (v as {total?: unknown}).total != null) ||
+    Object.values(record.front ?? {}).some((v) => (v as {total?: unknown}).total != null) ||
+    Object.values(record.closing ?? {}).some((v) => (v as {total?: unknown}).total != null) ||
+    Object.values(record.material_loss ?? {}).some((v) => v.result != null)
   );
 }
 
