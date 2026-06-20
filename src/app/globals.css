@@ -688,6 +688,36 @@ body {
 .app-dark .cancel-action-btn:hover { border-color: #ef4444; color: #ef4444; }
 .app-dark .cancel-action-btn:disabled { opacity: 0.4; cursor: default; }
 
+/* ===== Final tab reorder mode ===== */
+.app-dark .reorder-mode-banner {
+  background: #2a3047;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.app-dark .reorder-cell {
+  width: 64px;
+  padding: 0 4px;
+}
+.app-dark .reorder-cell .reorder-btns {
+  flex-direction: row;
+  padding: 0;
+  gap: 4px;
+}
+.app-dark .reorder-cell .reorder-arrow {
+  height: 28px;
+  font-size: 12px;
+  min-width: 28px;
+}
+.app-dark .admin-dbl-click {
+  cursor: default;
+  user-select: none;
+}
+
 /* ===== Confirm overlay ===== */
 .app-dark .confirm-overlay {
   position: fixed;
@@ -765,6 +795,118 @@ body {
 .app-dark .admin-card .desc {
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* ===== Admin Loss rate table ===== */
+.app-dark .loss-rate-table td,
+.app-dark .loss-rate-table th { padding: 7px 10px; }
+.app-dark .loss-product-cell {
+  font-weight: 500;
+  font-size: 13px;
+  border-right: 1px solid #2e3650;
+  vertical-align: top;
+  padding-top: 10px !important;
+}
+.app-dark .loss-container-cell {
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-right: 1px solid #2e3650;
+  vertical-align: top;
+  padding-top: 10px !important;
+}
+.app-dark .loss-material-cell { font-size: 13px; }
+.app-dark .loss-dash { color: var(--text-secondary); }
+.app-dark .loss-rate-cell { text-align: right; }
+.app-dark .loss-rate-edit {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: monospace;
+  text-align: right;
+  width: 110px;
+  outline: none;
+  padding: 2px 0;
+}
+.app-dark .loss-rate-edit:hover { border-bottom-color: #3a4460; }
+.app-dark .loss-rate-edit:focus { border-bottom-color: #5a7fff; }
+
+/* ===== Material Exp — Loss Calc & Summary tables ===== */
+.app-dark .loss-calc-wrap { overflow-x: auto; }
+.app-dark .loss-calc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.app-dark .loss-calc-table th {
+  background: #1e2438;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #2e3650;
+}
+.app-dark .loss-calc-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid #1e2438;
+  vertical-align: middle;
+}
+.app-dark .loss-calc-table tr:last-child td { border-bottom: none; }
+.app-dark .lc-product-cell {
+  font-weight: 500;
+  border-right: 1px solid #2e3650;
+  vertical-align: top;
+  padding-top: 10px !important;
+  white-space: nowrap;
+}
+.app-dark .lc-input-cell {
+  border-right: 1px solid #2e3650;
+  vertical-align: top;
+  padding: 6px 10px !important;
+  min-width: 100px;
+}
+.app-dark .lc-input-wrap { display: flex; flex-direction: column; gap: 3px; }
+.app-dark .lc-container-row select {
+  font-size: 11px;
+  background: #1a1f2e;
+  border: 1px solid #2e3650;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  padding: 2px 4px;
+  width: 100%;
+}
+.app-dark .lc-weight-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.app-dark .lc-tare {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.app-dark .lc-total-vol {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+.app-dark .lc-material-cell { color: var(--text-secondary); font-size: 12px; }
+.app-dark .lc-dash { color: #444; }
+.app-dark .lc-rate-cell {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: monospace;
+  text-align: right;
+}
+.app-dark .lc-result-cell {
+  text-align: right;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
 /* ===== Admin CRUD tables ===== */

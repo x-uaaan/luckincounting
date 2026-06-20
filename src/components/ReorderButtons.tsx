@@ -3,7 +3,7 @@
 import { useItemsStore } from "@/store/useItemsStore";
 import type { Item } from "@/lib/types";
 
-type SortField = "sort_order" | "closing_sort_order" | "front_sort_order";
+type SortField = "sort_order" | "closing_sort_order" | "front_sort_order" | "final_sort_order";
 
 interface Props {
   item: Item;
@@ -15,13 +15,14 @@ export default function ReorderButtons({ item, items, sortField = "sort_order" }
   const moveItem = useItemsStore((s) => s.moveItem);
 
   const getVal = (i: Item): number =>
-    sortField === "sort_order"
-      ? i.sort_order
-      : sortField === "closing_sort_order"
-      ? (i.closing_sort_order ?? i.sort_order)
-      : (i.front_sort_order ?? i.sort_order);
+    sortField === "sort_order" ? i.sort_order
+    : sortField === "closing_sort_order" ? (i.closing_sort_order ?? i.sort_order)
+    : sortField === "front_sort_order" ? (i.front_sort_order ?? i.sort_order)
+    : (i.final_sort_order ?? i.sort_order);
 
-  const peers = items.filter((i) => i.category === item.category).sort((a, b) => getVal(a) - getVal(b));
+  const peers = sortField === "final_sort_order"
+    ? items.filter((i) => i.appears_in.includes("sheet2")).sort((a, b) => getVal(a) - getVal(b))
+    : items.filter((i) => i.category === item.category).sort((a, b) => getVal(a) - getVal(b));
   const idx = peers.findIndex((i) => i.id === item.id);
 
   return (

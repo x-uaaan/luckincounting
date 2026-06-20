@@ -7,6 +7,7 @@ import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import { round1 } from "@/lib/calculations";
 import CategoryNav, { categoryAnchorId } from "@/components/CategoryNav";
+import ReorderButtons from "@/components/ReorderButtons";
 
 const STAGE_LABELS: Record<string, string> = {
   back: "Back",
@@ -25,8 +26,11 @@ export default function ResultPage() {
   const runSelfCheck = useCountingStore((s) => s.runSelfCheck);
   const submitForApproval = useCountingStore((s) => s.submitForApproval);
   const allItems = useItemsStore((s) => s.items);
+  const reorderMode = useItemsStore((s) => s.reorderMode);
+  const setReorderMode = useItemsStore((s) => s.setReorderMode);
 
   const [submitting, setSubmitting] = useState(false);
+  const [adminClickCount, setAdminClickCount] = useState(0);
 
   const items = allItems
     .filter((i) => i.appears_in.includes("sheet2"))
@@ -48,19 +52,36 @@ export default function ResultPage() {
     setSubmitting(false);
   }
 
+  function handleAdminDoubleClick() {
+    setReorderMode(!reorderMode);
+  }
+
   return (
     <>
       <CategoryNav categories={categories} />
+
+      {reorderMode && (
+        <div className="reorder-mode-banner">
+          Reorder mode — drag items or use arrows to rearrange. Double-click Admin to exit.
+        </div>
+      )}
 
       <div className="card">
         <table className="result">
           <thead>
             <tr>
+              {reorderMode && <th></th>}
               <th>Item</th>
               <th>Back</th>
               <th>Front</th>
               <th>Closing</th>
-              <th>Total</th>
+              <th
+                className="total admin-dbl-click"
+                onDoubleClick={handleAdminDoubleClick}
+                title="Double-click to toggle reorder mode"
+              >
+                Total
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -72,12 +93,17 @@ export default function ResultPage() {
                 <Fragment key={item.id}>
                   {showCategory && (
                     <tr className="category-row">
-                      <td colSpan={5} id={categoryAnchorId(item.category)}>
+                      <td colSpan={reorderMode ? 6 : 5} id={categoryAnchorId(item.category)}>
                         {item.category}
                       </td>
                     </tr>
                   )}
                   <tr>
+                    {reorderMode && (
+                      <td className="reorder-cell">
+                        <ReorderButtons item={item} items={allItems} sortField="final_sort_order" />
+                      </td>
+                    )}
                     <td>{item.name}</td>
                     <td>{round1(entry?.back ?? 0)}</td>
                     <td>{round1(entry?.front ?? 0)}</td>
