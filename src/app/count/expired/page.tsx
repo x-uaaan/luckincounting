@@ -100,6 +100,7 @@ export default function ExpiredPage() {
 
   if (!record) return null;
 
+  const activeRecord = record;
   const rows = buildCalcRows(allItems);
   const summaryItems = buildSummaryItems(allItems);
 
@@ -107,7 +108,7 @@ export default function ExpiredPage() {
   const renderedProductIds = new Set<string>();
 
   function getProductEntry(productId: string) {
-    return record.material_loss[productId];
+    return activeRecord.material_loss[productId];
   }
 
   function productTotalVolume(productId: string): number {
@@ -235,7 +236,7 @@ export default function ExpiredPage() {
             </thead>
             <tbody>
               {summaryItems.map((item) => {
-                const entry = record.material_loss[item.id];
+                const entry = activeRecord.material_loss[item.id];
                 const result = entry?.result ?? 0;
                 return (
                   <tr key={item.id}>
