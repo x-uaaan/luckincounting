@@ -106,7 +106,7 @@ export default function ActivityPage() {
       const exists = containers.find((c) => c.id === id);
       if (!exists) return { ok: false, error: "Container no longer exists." };
       const affected = items.filter(
-        (i) => i.default_container_id === id || i.container_id === id
+        (i) => i.default_container_id === id
       );
       const relations = affected.map((i) => `"${i.name}" uses this container`);
       return {
