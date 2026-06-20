@@ -813,7 +813,7 @@ body {
   padding: 4px 6px !important;
   width: 60px;
 }
-.app-dark .loss-move-btns { display: flex; flex-direction: row; gap: 4px; align-items: center; }
+.app-dark .loss-move-btns { display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .app-dark .loss-move-btn {
   background: #2a3047;
   border: none;
@@ -920,6 +920,16 @@ body {
   font-weight: 500;
   min-width: 60px;
   text-align: right;
+}
+
+.app-dark .lc-container-select {
+  font-size: 11px;
+  background: #1a1f2e;
+  border: 1px solid #2e3650;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  padding: 2px 4px;
+  max-width: 90px;
 }
 
 /* ===== Material Exp — Loss Calc & Summary tables ===== */

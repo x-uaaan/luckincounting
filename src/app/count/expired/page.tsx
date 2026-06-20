@@ -30,6 +30,7 @@ export default function ExpiredPage() {
   const record = useCountingStore((s) => s.record);
   const setMaterialLoss = useCountingStore((s) => s.setMaterialLoss);
   const allItems = useItemsStore((s) => s.items);
+  const containers = useItemsStore((s) => s.containers);
   const reorderMode = useItemsStore((s) => s.reorderMode);
 
   if (!record) return null;
@@ -43,32 +44,46 @@ export default function ExpiredPage() {
     (i) => i.loss_role === "input_and_summary" || i.loss_role === "input"
   );
 
-  function getWeight(productId: string): number | null {
-    return activeRecord.material_loss[productId]?.gross_weight ?? null;
+  function getEntry(productId: string) {
+    return activeRecord.material_loss[productId] ?? null;
   }
 
-  function setWeight(productId: string, v: number | null) {
-    setMaterialLoss(productId, { container_id: null, gross_weight: v, rate_value: null });
+  function getGross(productId: string): number | null {
+    return getEntry(productId)?.gross_weight ?? null;
   }
 
-  // Compute material totals from product inputs
-  // Returns map: inventoryItemId -> total used (g)
+  function getContainerId(productId: string): string {
+    return getEntry(productId)?.container_id ?? allItems.find(i => i.id === productId)?.default_container_id ?? "";
+  }
+
+  function getTare(containerId: string): number {
+    return containers.find((c) => c.id === containerId)?.tare_g ?? 0;
+  }
+
+  function getNetWeight(productId: string): number | null {
+    const gross = getGross(productId);
+    if (gross == null) return null;
+    const tare = getTare(getContainerId(productId));
+    return gross - tare;
+  }
+
+  function setEntry(productId: string, containerId: string | null, gross: number | null) {
+    setMaterialLoss(productId, { container_id: containerId || null, gross_weight: gross, rate_value: null });
+  }
+
+  // Compute material totals: inventoryItemId -> total used (g)
   function computeSummary(): Map<string, number> {
     const totals = new Map<string, number>();
-
     for (const product of products) {
-      const weight = getWeight(product.id);
-      if (weight == null) continue;
-
+      const net = getNetWeight(product.id);
+      if (net == null) continue;
       if (product.loss_role === "input_and_summary") {
-        // product IS the material; rate from loss_rate
         const rate = product.loss_rate ?? 0;
-        totals.set(product.id, (totals.get(product.id) ?? 0) + weight * rate);
+        totals.set(product.id, (totals.get(product.id) ?? 0) + net * rate);
       } else {
-        // input product — each loss_component references an inventory item
         for (const comp of product.loss_components ?? []) {
-          const matId = comp.source_item_id;
-          totals.set(matId, (totals.get(matId) ?? 0) + weight * comp.rate);
+          if (!comp.source_item_id) continue;
+          totals.set(comp.source_item_id, (totals.get(comp.source_item_id) ?? 0) + net * comp.rate);
         }
       }
     }
@@ -77,7 +92,6 @@ export default function ExpiredPage() {
 
   const summary = computeSummary();
 
-  // Summary rows: ias items + unique material item IDs from input products
   const summaryItemIds = new Set<string>();
   for (const product of products) {
     if (product.loss_role === "input_and_summary") {
@@ -96,17 +110,20 @@ export default function ExpiredPage() {
   return (
     <>
       {products.map((product) => {
-        const weight = getWeight(product.id);
         const isIas = product.loss_role === "input_and_summary";
         const comps = product.loss_components ?? [];
+        const gross = getGross(product.id);
+        const containerId = getContainerId(product.id);
+        const tare = getTare(containerId);
+        const net = gross != null ? gross - tare : null;
 
-        // total result for this product card header
+        // card total
         let cardTotal: number | null = null;
-        if (weight != null) {
+        if (net != null) {
           if (isIas) {
-            cardTotal = weight * (product.loss_rate ?? 0);
+            cardTotal = net * (product.loss_rate ?? 0);
           } else {
-            cardTotal = comps.reduce((sum, c) => sum + weight * c.rate, 0);
+            cardTotal = comps.reduce((sum, c) => sum + net * c.rate, 0);
           }
         }
 
@@ -126,30 +143,57 @@ export default function ExpiredPage() {
                 </div>
               </div>
 
-              {/* Weight input row */}
+              {/* Weight + container row */}
               <div className="row">
                 <div className="w105">
                   <div className="name">Weight (g)</div>
                 </div>
-                <div className="field">
+                <div className="field w70">
+                  <div className="lbl">Gross</div>
                   <NumericInput
-                    value={weight}
-                    onChange={(v) => setWeight(product.id, v)}
+                    value={gross}
+                    onChange={(v) => setEntry(product.id, containerId || null, v)}
                   />
                 </div>
+                <div className="op">−</div>
+                <div className="field w44">
+                  <div className="lbl">Container</div>
+                  <select
+                    className="lc-container-select"
+                    value={containerId}
+                    onChange={(e) => setEntry(product.id, e.target.value || null, gross)}
+                  >
+                    <option value="">— none —</option>
+                    {containers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.tare_g}g)</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="op">=</div>
+                <div className="field w70">
+                  <div className="lbl">Net</div>
+                  <input className="auto" disabled value={net != null ? String(net) : ""} />
+                </div>
               </div>
+
+              {/* Calc check line */}
+              {gross != null && (
+                <div className="check">
+                  {gross} − {tare} = {net} g
+                </div>
+              )}
 
               {/* Material rows */}
               {isIas ? (
                 <div className="row lc-mat-row">
                   <div className="w105 name lc-mat-name">—</div>
                   <div className="lc-rate">{toFraction(product.loss_rate ?? 0)}</div>
-                  <div className="lc-result">{weight != null ? fmt(weight * (product.loss_rate ?? 0)) : "—"} g</div>
+                  <div className="lc-result">{net != null ? fmt(net * (product.loss_rate ?? 0)) : "—"} g</div>
                 </div>
               ) : (
                 comps.map((comp, ci) => {
                   const matItem = allItems.find((i) => i.id === comp.source_item_id);
-                  const result = weight != null ? weight * comp.rate : null;
+                  const result = net != null ? net * comp.rate : null;
                   return (
                     <div key={ci} className="row lc-mat-row">
                       <div className="w105 name lc-mat-name">{matItem?.name ?? comp.source_item_id}</div>

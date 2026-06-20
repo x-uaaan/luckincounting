@@ -40,75 +40,74 @@ export default function AdminLossPage() {
     .filter((i) => MATERIAL_CATEGORIES.includes(i.category))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const expired = items.filter((i) => i.appears_in.includes("expired"));
-  const ias = expired.filter((i) => i.loss_role === "input_and_summary").sort((a, b) => a.sort_order - b.sort_order);
-  const inputs = expired.filter((i) => i.loss_role === "input").sort((a, b) => a.sort_order - b.sort_order);
+  // All expired items in one sorted list
+  const allExpired = items
+    .filter((i) => i.appears_in.includes("expired"))
+    .sort((a, b) => a.sort_order - b.sort_order);
 
-  function moveIas(id: string, dir: number) {
-    const idx = ias.findIndex((i) => i.id === id);
+  function move(id: string, dir: number) {
+    const idx = allExpired.findIndex((i) => i.id === id);
     const j = idx + dir;
-    if (j < 0 || j >= ias.length) return;
-    updateItem(ias[idx].id, { sort_order: ias[j].sort_order });
-    updateItem(ias[j].id, { sort_order: ias[idx].sort_order });
-  }
-
-  function moveInput(id: string, dir: number) {
-    const idx = inputs.findIndex((i) => i.id === id);
-    const j = idx + dir;
-    if (j < 0 || j >= inputs.length) return;
-    updateItem(inputs[idx].id, { sort_order: inputs[j].sort_order });
-    updateItem(inputs[j].id, { sort_order: inputs[idx].sort_order });
+    if (j < 0 || j >= allExpired.length) return;
+    updateItem(allExpired[idx].id, { sort_order: allExpired[j].sort_order });
+    updateItem(allExpired[j].id, { sort_order: allExpired[idx].sort_order });
   }
 
   function saveName(id: string, val: string) {
     if (val.trim()) updateItem(id, { name: val.trim() });
   }
 
-  function saveIasRate(id: string, val: string) {
-    const r = parseFraction(val);
-    if (r !== null) updateItem(id, { loss_rate: r });
+  // Get display comps for any item: ias items get a synthetic self-ref row
+  function getComps(item: Item) {
+    if (item.loss_role === "input_and_summary") {
+      return [{ source_item_id: item.id, rate: item.loss_rate ?? 0 }];
+    }
+    return item.loss_components ?? [];
   }
 
-  function saveCompRate(productId: string, ci: number, val: string) {
+  function saveCompRate(item: Item, ci: number, val: string) {
     const r = parseFraction(val);
     if (r === null) return;
-    const p = items.find((i) => i.id === productId);
-    if (!p) return;
-    const comps = (p.loss_components ?? []).map((c, i) => (i === ci ? { ...c, rate: r } : c));
-    updateItem(productId, { loss_components: comps });
+    const comps = getComps(item);
+    const updated = comps.map((c, i) => (i === ci ? { ...c, rate: r } : c));
+    if (item.loss_role === "input_and_summary") {
+      // Self-reference row: save to loss_rate
+      updateItem(item.id, { loss_rate: updated[0]?.rate ?? r });
+    } else {
+      updateItem(item.id, { loss_components: updated });
+    }
   }
 
-  function saveCompMaterial(productId: string, ci: number, matId: string) {
-    const p = items.find((i) => i.id === productId);
-    if (!p) return;
-    const comps = (p.loss_components ?? []).map((c, i) =>
-      i === ci ? { ...c, source_item_id: matId } : c
-    );
-    updateItem(productId, { loss_components: comps });
+  function saveCompMaterial(item: Item, ci: number, matId: string) {
+    if (item.loss_role === "input_and_summary") {
+      // If still self-referencing (or empty), keep as ias; otherwise convert to input
+      if (!matId || matId === item.id) return;
+      const comps = [{ source_item_id: matId, rate: item.loss_rate ?? 0 }];
+      updateItem(item.id, { loss_components: comps, loss_role: "input", loss_formula: "direct" });
+    } else {
+      const comps = (item.loss_components ?? []).map((c, i) =>
+        i === ci ? { ...c, source_item_id: matId } : c
+      );
+      updateItem(item.id, { loss_components: comps });
+    }
   }
 
-  function addComp(productId: string) {
-    const p = items.find((i) => i.id === productId);
-    if (!p) return;
-    const comps = [...(p.loss_components ?? []), { source_item_id: "", rate: 1 }];
-    updateItem(productId, { loss_components: comps });
+  function addComp(item: Item) {
+    if (item.loss_role === "input_and_summary") {
+      // Add a new empty comp row — convert to input
+      const comps = [...getComps(item), { source_item_id: "", rate: 0 }];
+      updateItem(item.id, { loss_components: comps, loss_role: "input", loss_formula: "direct" });
+    } else {
+      const comps = [...(item.loss_components ?? []), { source_item_id: "", rate: 0 }];
+      updateItem(item.id, { loss_components: comps });
+    }
   }
 
-  function removeComp(productId: string, ci: number) {
-    const p = items.find((i) => i.id === productId);
-    if (!p) return;
-    const comps = (p.loss_components ?? []).filter((_, i) => i !== ci);
-    updateItem(productId, { loss_components: comps });
+  function removeComp(item: Item, ci: number) {
+    if (item.loss_role === "input_and_summary") return; // can't remove ias self-row
+    const comps = (item.loss_components ?? []).filter((_, i) => i !== ci);
+    updateItem(item.id, { loss_components: comps });
   }
-
-  const renderMoveCell = (rowspan: number, onLeft: () => void, onRight: () => void, isFirst: boolean, isLast: boolean) => (
-    <td rowSpan={rowspan} className="loss-move-cell">
-      <div className="loss-move-btns">
-        <button className="loss-move-btn" disabled={isFirst} onPointerDown={(e) => { e.preventDefault(); onLeft(); }}>←</button>
-        <button className="loss-move-btn" disabled={isLast} onPointerDown={(e) => { e.preventDefault(); onRight(); }}>→</button>
-      </div>
-    </td>
-  );
 
   const renderNameCell = (item: Item, rowspan: number) => (
     <td rowSpan={rowspan} className="loss-product-cell">
@@ -129,59 +128,54 @@ export default function AdminLossPage() {
           <table className="admin-table loss-rate-table">
             <thead>
               <tr>
-                <th style={{ width: 64 }}></th>
+                <th style={{ width: 48 }}></th>
                 <th>Product</th>
                 <th>Material</th>
                 <th>Rate</th>
-                <th style={{ width: 32 }}></th>
+                <th style={{ width: 48 }}></th>
               </tr>
             </thead>
             <tbody>
-              {/* ias items — product IS the material */}
-              {ias.map((item, idx) => (
-                <tr key={item.id}>
-                  {renderMoveCell(1, () => moveIas(item.id, -1), () => moveIas(item.id, 1), idx === 0, idx === ias.length - 1)}
-                  {renderNameCell(item, 1)}
-                  <td className="loss-material-cell loss-dash">—</td>
-                  <td className="loss-rate-cell">
-                    <input
-                      className="loss-rate-edit"
-                      inputMode="decimal"
-                      defaultValue={toFraction(item.loss_rate ?? 0)}
-                      key={`${item.id}-${item.loss_rate}`}
-                      onBlur={(e) => saveIasRate(item.id, e.target.value)}
-                    />
-                  </td>
-                  <td />
-                </tr>
-              ))}
-
-              {/* input products — each comp is a material row */}
-              {inputs.map((product, pidx) => {
-                const comps = product.loss_components ?? [];
+              {allExpired.map((item, idx) => {
+                const comps = getComps(item);
+                const isIas = item.loss_role === "input_and_summary";
                 const rs = Math.max(comps.length, 1);
+
                 if (comps.length === 0) {
                   return (
-                    <tr key={product.id}>
-                      {renderMoveCell(1, () => moveInput(product.id, -1), () => moveInput(product.id, 1), pidx === 0, pidx === inputs.length - 1)}
-                      {renderNameCell(product, 1)}
+                    <tr key={item.id}>
+                      <td className="loss-move-cell">
+                        <div className="loss-move-btns">
+                          <button className="loss-move-btn" disabled={idx === 0} onPointerDown={(e) => { e.preventDefault(); move(item.id, -1); }}>↑</button>
+                          <button className="loss-move-btn" disabled={idx === allExpired.length - 1} onPointerDown={(e) => { e.preventDefault(); move(item.id, 1); }}>↓</button>
+                        </div>
+                      </td>
+                      {renderNameCell(item, 1)}
                       <td className="loss-material-cell">
-                        <button className="loss-add-comp" onClick={() => addComp(product.id)}>+ add material</button>
+                        <button className="loss-add-comp" onClick={() => addComp(item)}>+ add material</button>
                       </td>
                       <td />
                       <td />
                     </tr>
                   );
                 }
+
                 return comps.map((comp, ci) => (
-                  <tr key={`${product.id}-${ci}`}>
-                    {ci === 0 && renderMoveCell(rs, () => moveInput(product.id, -1), () => moveInput(product.id, 1), pidx === 0, pidx === inputs.length - 1)}
-                    {ci === 0 && renderNameCell(product, rs)}
+                  <tr key={`${item.id}-${ci}`}>
+                    {ci === 0 && (
+                      <td rowSpan={rs} className="loss-move-cell">
+                        <div className="loss-move-btns">
+                          <button className="loss-move-btn" disabled={idx === 0} onPointerDown={(e) => { e.preventDefault(); move(item.id, -1); }}>↑</button>
+                          <button className="loss-move-btn" disabled={idx === allExpired.length - 1} onPointerDown={(e) => { e.preventDefault(); move(item.id, 1); }}>↓</button>
+                        </div>
+                      </td>
+                    )}
+                    {ci === 0 && renderNameCell(item, rs)}
                     <td className="loss-material-cell">
                       <select
                         className="loss-mat-select"
                         value={comp.source_item_id}
-                        onChange={(e) => saveCompMaterial(product.id, ci, e.target.value)}
+                        onChange={(e) => saveCompMaterial(item, ci, e.target.value)}
                       >
                         <option value="">— none —</option>
                         {MATERIAL_CATEGORIES.map((cat) => {
@@ -202,15 +196,17 @@ export default function AdminLossPage() {
                         className="loss-rate-edit"
                         inputMode="decimal"
                         defaultValue={toFraction(comp.rate)}
-                        key={`${product.id}-${ci}-${comp.rate}`}
-                        onBlur={(e) => saveCompRate(product.id, ci, e.target.value)}
+                        key={`${item.id}-${ci}-${comp.rate}`}
+                        onBlur={(e) => saveCompRate(item, ci, e.target.value)}
                       />
                     </td>
                     <td className="loss-action-cell">
-                      {ci === comps.length - 1 && (
-                        <button className="loss-add-comp" onClick={() => addComp(product.id)} title="Add row">+</button>
+                      {ci === comps.length - 1 && !isIas && (
+                        <button className="loss-add-comp" onClick={() => addComp(item)} title="Add row">+</button>
                       )}
-                      <button className="loss-rm-comp" onClick={() => removeComp(product.id, ci)} title="Remove">×</button>
+                      {!isIas && (
+                        <button className="loss-rm-comp" onClick={() => removeComp(item, ci)} title="Remove">×</button>
+                      )}
                     </td>
                   </tr>
                 ));
