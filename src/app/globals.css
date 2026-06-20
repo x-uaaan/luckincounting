@@ -807,30 +807,43 @@ body {
   vertical-align: top;
   padding-top: 10px !important;
 }
+/* ===== Admin Loss table ===== */
+.app-dark .loss-move-th { width: 44px !important; }
+.app-dark .loss-action-th { width: 52px !important; }
 .app-dark .loss-move-cell {
   border-right: 1px solid #2e3650;
   vertical-align: middle;
-  padding: 4px 6px !important;
-  width: 60px;
+  padding: 4px !important;
+  width: 44px;
+  text-align: center;
 }
-.app-dark .loss-move-btns { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.app-dark .loss-move-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+}
 .app-dark .loss-move-btn {
   background: #2a3047;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
-  padding: 4px 7px;
+  font-size: 14px;
+  width: 28px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
-  border-radius: 6px;
+  border-radius: 5px;
   touch-action: manipulation;
 }
 .app-dark .loss-move-btn:hover:not(:disabled) { background: #3a4460; color: var(--text-primary); }
 .app-dark .loss-move-btn:disabled { opacity: 0.25; cursor: default; }
 .app-dark .loss-material-cell { font-size: 13px; }
-.app-dark .loss-dash { color: var(--text-secondary); }
-.app-dark .loss-rate-cell { text-align: right; }
-.app-dark .loss-action-cell { text-align: center; white-space: nowrap; }
+.app-dark .loss-rate-cell { text-align: right; width: 90px; }
+.app-dark .loss-action-cell { text-align: center; white-space: nowrap; width: 52px; }
 .app-dark .loss-name-edit {
   background: transparent;
   border: none;
@@ -838,7 +851,7 @@ body {
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
-  width: 100%;
+  width: 130px;
   outline: none;
   padding: 2px 0;
 }
@@ -851,7 +864,7 @@ body {
   color: var(--text-primary);
   font-size: 12px;
   padding: 4px 6px;
-  max-width: 180px;
+  min-width: 170px;
   outline: none;
 }
 .app-dark .loss-mat-select:focus { border-color: #5a7fff; }
@@ -884,12 +897,67 @@ body {
   font-size: 12px;
   font-family: monospace;
   text-align: right;
-  width: 80px;
+  width: 70px;
   outline: none;
   padding: 2px 0;
 }
 .app-dark .loss-rate-edit:hover { border-bottom-color: #3a4460; }
 .app-dark .loss-rate-edit:focus { border-bottom-color: #5a7fff; }
+
+/* ===== Material Exp table ===== */
+.app-dark .loss-exp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.app-dark .loss-exp-table th {
+  background: #1e2438;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid #2e3650;
+}
+.app-dark .loss-exp-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #1e2438;
+  vertical-align: middle;
+}
+.app-dark .loss-exp-table tbody tr:last-child td { border-bottom: none; }
+.app-dark .lexp-input-th { width: 110px; }
+.app-dark .lexp-ctn-th { width: 140px; }
+.app-dark .lexp-rate-th { width: 60px; text-align: right; }
+.app-dark .lexp-result-th { width: 80px; text-align: right; }
+.app-dark .lexp-product-cell { font-weight: 500; font-size: 13px; border-right: 1px solid #2e3650; }
+.app-dark .lexp-input-cell { border-right: 1px solid #2e3650; }
+.app-dark .lexp-input-cell input { width: 72px; }
+.app-dark .lexp-net {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  font-family: monospace;
+  white-space: nowrap;
+}
+.app-dark .lexp-ctn-cell { border-right: 1px solid #2e3650; }
+.app-dark .lexp-ctn-select {
+  font-size: 11px;
+  background: #1a1f2e;
+  border: 1px solid #2e3650;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  padding: 3px 5px;
+  min-width: 120px;
+  width: 100%;
+}
+.app-dark .lexp-mat-cell { color: var(--text-secondary); font-size: 12px; }
+.app-dark .lexp-rate-cell {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-secondary);
+  text-align: right;
+}
+.app-dark .lexp-result-cell {
+  text-align: right;
+  font-weight: 500;
+  font-family: monospace;
+}
 
 /* Material Exp card rows */
 .app-dark .lc-mat-row {

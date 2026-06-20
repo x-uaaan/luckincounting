@@ -34,13 +34,11 @@ function parseFraction(s: string): number | null {
 export default function AdminLossPage() {
   const items = useItemsStore((s) => s.items);
   const updateItem = useItemsStore((s) => s.updateItem);
-  const reseedLossItems = useItemsStore((s) => s.reseedLossItems);
 
   const materialItems = items
     .filter((i) => MATERIAL_CATEGORIES.includes(i.category))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // All expired items in one sorted list
   const allExpired = items
     .filter((i) => i.appears_in.includes("expired"))
     .sort((a, b) => a.sort_order - b.sort_order);
@@ -57,7 +55,6 @@ export default function AdminLossPage() {
     if (val.trim()) updateItem(id, { name: val.trim() });
   }
 
-  // Get display comps for any item: ias items get a synthetic self-ref row
   function getComps(item: Item) {
     if (item.loss_role === "input_and_summary") {
       return [{ source_item_id: item.id, rate: item.loss_rate ?? 0 }];
@@ -68,19 +65,16 @@ export default function AdminLossPage() {
   function saveCompRate(item: Item, ci: number, val: string) {
     const r = parseFraction(val);
     if (r === null) return;
-    const comps = getComps(item);
-    const updated = comps.map((c, i) => (i === ci ? { ...c, rate: r } : c));
     if (item.loss_role === "input_and_summary") {
-      // Self-reference row: save to loss_rate
-      updateItem(item.id, { loss_rate: updated[0]?.rate ?? r });
+      updateItem(item.id, { loss_rate: r });
     } else {
-      updateItem(item.id, { loss_components: updated });
+      const comps = (item.loss_components ?? []).map((c, i) => (i === ci ? { ...c, rate: r } : c));
+      updateItem(item.id, { loss_components: comps });
     }
   }
 
   function saveCompMaterial(item: Item, ci: number, matId: string) {
     if (item.loss_role === "input_and_summary") {
-      // If still self-referencing (or empty), keep as ias; otherwise convert to input
       if (!matId || matId === item.id) return;
       const comps = [{ source_item_id: matId, rate: item.loss_rate ?? 0 }];
       updateItem(item.id, { loss_components: comps, loss_role: "input", loss_formula: "direct" });
@@ -94,7 +88,6 @@ export default function AdminLossPage() {
 
   function addComp(item: Item) {
     if (item.loss_role === "input_and_summary") {
-      // Add a new empty comp row — convert to input
       const comps = [...getComps(item), { source_item_id: "", rate: 0 }];
       updateItem(item.id, { loss_components: comps, loss_role: "input", loss_formula: "direct" });
     } else {
@@ -104,13 +97,25 @@ export default function AdminLossPage() {
   }
 
   function removeComp(item: Item, ci: number) {
-    if (item.loss_role === "input_and_summary") return; // can't remove ias self-row
+    if (item.loss_role === "input_and_summary") {
+      // ias self-row: nothing to remove (single synthetic row)
+      return;
+    }
     const comps = (item.loss_components ?? []).filter((_, i) => i !== ci);
     updateItem(item.id, { loss_components: comps });
   }
 
-  const renderNameCell = (item: Item, rowspan: number) => (
-    <td rowSpan={rowspan} className="loss-product-cell">
+  const renderMoveCell = (idx: number, id: string, rs: number) => (
+    <td rowSpan={rs} className="loss-move-cell">
+      <div className="loss-move-btns">
+        <button className="loss-move-btn" disabled={idx === 0} onPointerDown={(e) => { e.preventDefault(); move(id, -1); }}>↑</button>
+        <button className="loss-move-btn" disabled={idx === allExpired.length - 1} onPointerDown={(e) => { e.preventDefault(); move(id, 1); }}>↓</button>
+      </div>
+    </td>
+  );
+
+  const renderNameCell = (item: Item, rs: number) => (
+    <td rowSpan={rs} className="loss-product-cell">
       <input
         className="loss-name-edit"
         defaultValue={item.name}
@@ -118,6 +123,27 @@ export default function AdminLossPage() {
         onBlur={(e) => saveName(item.id, e.target.value)}
       />
     </td>
+  );
+
+  const matSelect = (item: Item, comp: { source_item_id: string; rate: number }, ci: number) => (
+    <select
+      className="loss-mat-select"
+      value={comp.source_item_id}
+      onChange={(e) => saveCompMaterial(item, ci, e.target.value)}
+    >
+      <option value="">— none —</option>
+      {MATERIAL_CATEGORIES.map((cat) => {
+        const catItems = materialItems.filter((m) => m.category === cat);
+        if (!catItems.length) return null;
+        return (
+          <optgroup key={cat} label={cat}>
+            {catItems.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </optgroup>
+        );
+      })}
+    </select>
   );
 
   return (
@@ -128,11 +154,11 @@ export default function AdminLossPage() {
           <table className="admin-table loss-rate-table">
             <thead>
               <tr>
-                <th style={{ width: 48 }}></th>
+                <th className="loss-move-th"></th>
                 <th>Product</th>
                 <th>Material</th>
                 <th>Rate</th>
-                <th style={{ width: 48 }}></th>
+                <th className="loss-action-th"></th>
               </tr>
             </thead>
             <tbody>
@@ -144,12 +170,7 @@ export default function AdminLossPage() {
                 if (comps.length === 0) {
                   return (
                     <tr key={item.id}>
-                      <td className="loss-move-cell">
-                        <div className="loss-move-btns">
-                          <button className="loss-move-btn" disabled={idx === 0} onPointerDown={(e) => { e.preventDefault(); move(item.id, -1); }}>↑</button>
-                          <button className="loss-move-btn" disabled={idx === allExpired.length - 1} onPointerDown={(e) => { e.preventDefault(); move(item.id, 1); }}>↓</button>
-                        </div>
-                      </td>
+                      {renderMoveCell(idx, item.id, 1)}
                       {renderNameCell(item, 1)}
                       <td className="loss-material-cell">
                         <button className="loss-add-comp" onClick={() => addComp(item)}>+ add material</button>
@@ -162,34 +183,10 @@ export default function AdminLossPage() {
 
                 return comps.map((comp, ci) => (
                   <tr key={`${item.id}-${ci}`}>
-                    {ci === 0 && (
-                      <td rowSpan={rs} className="loss-move-cell">
-                        <div className="loss-move-btns">
-                          <button className="loss-move-btn" disabled={idx === 0} onPointerDown={(e) => { e.preventDefault(); move(item.id, -1); }}>↑</button>
-                          <button className="loss-move-btn" disabled={idx === allExpired.length - 1} onPointerDown={(e) => { e.preventDefault(); move(item.id, 1); }}>↓</button>
-                        </div>
-                      </td>
-                    )}
+                    {ci === 0 && renderMoveCell(idx, item.id, rs)}
                     {ci === 0 && renderNameCell(item, rs)}
                     <td className="loss-material-cell">
-                      <select
-                        className="loss-mat-select"
-                        value={comp.source_item_id}
-                        onChange={(e) => saveCompMaterial(item, ci, e.target.value)}
-                      >
-                        <option value="">— none —</option>
-                        {MATERIAL_CATEGORIES.map((cat) => {
-                          const catItems = materialItems.filter((m) => m.category === cat);
-                          if (!catItems.length) return null;
-                          return (
-                            <optgroup key={cat} label={cat}>
-                              {catItems.map((m) => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
-                              ))}
-                            </optgroup>
-                          );
-                        })}
-                      </select>
+                      {matSelect(item, comp, ci)}
                     </td>
                     <td className="loss-rate-cell">
                       <input
@@ -201,7 +198,7 @@ export default function AdminLossPage() {
                       />
                     </td>
                     <td className="loss-action-cell">
-                      {ci === comps.length - 1 && !isIas && (
+                      {ci === comps.length - 1 && (
                         <button className="loss-add-comp" onClick={() => addComp(item)} title="Add row">+</button>
                       )}
                       {!isIas && (
@@ -214,11 +211,6 @@ export default function AdminLossPage() {
             </tbody>
           </table>
         </div>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => reseedLossItems()}>
-          Reseed Loss Items
-        </button>
       </div>
     </div>
   );
