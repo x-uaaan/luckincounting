@@ -119,17 +119,30 @@ export default function AdminItemsPage() {
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; category: string; colIdx: number } | null>(null);
   const [editingLabel, setEditingLabel] = useState<{ category: string; colIdx: number } | null>(null);
+  const [pendingInsert, setPendingInsert] = useState<{ x: number; y: number; category: string; colIdx: number; side: "left" | "right" } | null>(null);
+  const [insertName, setInsertName] = useState("");
 
   function openCtx(e: React.MouseEvent, category: string, colIdx: number) {
     e.preventDefault();
     setCtxMenu({ x: e.clientX, y: e.clientY, category, colIdx });
   }
-  function insertCol(category: string, colIdx: number, side: "left" | "right", af: { field: NumericField; defaultLabel: string }) {
-    const cols = catCols[category] ?? [];
-    const newCol = { field: af.field, label: af.defaultLabel };
-    const at = side === "left" ? colIdx : colIdx + 1;
-    saveCols({ ...catCols, [category]: [...cols.slice(0, at), newCol, ...cols.slice(at)] });
+  function startInsert(side: "left" | "right") {
+    if (!ctxMenu) return;
+    setPendingInsert({ ...ctxMenu, side });
+    setInsertName("");
     setCtxMenu(null);
+  }
+  function confirmInsert() {
+    if (!pendingInsert) return;
+    const { category, colIdx, side } = pendingInsert;
+    const cols = catCols[category] ?? [];
+    const usedFields = new Set(cols.map(c => c.field));
+    const nextField = ALL_FIELDS.find(af => !usedFields.has(af.field));
+    if (!nextField) { setPendingInsert(null); return; }
+    const at = side === "left" ? colIdx : colIdx + 1;
+    const label = insertName.trim() || nextField.defaultLabel;
+    saveCols({ ...catCols, [category]: [...cols.slice(0, at), { field: nextField.field, label }, ...cols.slice(at)] });
+    setPendingInsert(null);
   }
   function removeCol(category: string, colIdx: number) {
     const cols = catCols[category] ?? [];
@@ -228,8 +241,6 @@ export default function AdminItemsPage() {
           .sort((a, b) => a.sort_order - b.sort_order);
         const draft = draftFor(category);
         const columns = catCols[category] ?? [];
-        const usedFields = new Set(columns.map(c => c.field));
-        const availableFields = ALL_FIELDS.filter(af => !usedFields.has(af.field));
 
         return (
           <div key={category} className="card">
@@ -351,15 +362,36 @@ export default function AdminItemsPage() {
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setCtxMenu(null)} onContextMenu={(e) => { e.preventDefault(); setCtxMenu(null); }} />
           <div className="col-ctx-menu" style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 999 }}>
-            {availableFieldsForCtx(ctxMenu.category).map((af) => (
-              <div key={af.field} className="col-ctx-group">
-                <button onClick={() => insertCol(ctxMenu.category, ctxMenu.colIdx, "left", af)}>← Insert &quot;{af.defaultLabel}&quot;</button>
-                <button onClick={() => insertCol(ctxMenu.category, ctxMenu.colIdx, "right", af)}>Insert &quot;{af.defaultLabel}&quot; →</button>
-              </div>
-            ))}
-            {availableFieldsForCtx(ctxMenu.category).length > 0 && <div className="col-ctx-sep" />}
+            {availableFieldsForCtx(ctxMenu.category).length > 0 && (
+              <>
+                <button onClick={() => startInsert("left")}>← Insert new col</button>
+                <button onClick={() => startInsert("right")}>Insert new col →</button>
+                <div className="col-ctx-sep" />
+              </>
+            )}
             <button onClick={() => { setEditingLabel({ category: ctxMenu.category, colIdx: ctxMenu.colIdx }); setCtxMenu(null); }}>Edit name</button>
             <button className="col-ctx-danger" onClick={() => removeCol(ctxMenu.category, ctxMenu.colIdx)}>Remove column</button>
+          </div>
+        </>
+      )}
+
+      {pendingInsert && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setPendingInsert(null)} />
+          <div className="col-ctx-menu" style={{ position: "fixed", left: pendingInsert.x, top: pendingInsert.y, zIndex: 999, padding: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6 }}>Column name</div>
+            <input
+              autoFocus
+              value={insertName}
+              onChange={(e) => setInsertName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmInsert(); if (e.key === "Escape") setPendingInsert(null); }}
+              placeholder="e.g. Pcs/bag"
+              style={{ width: "100%", marginBottom: 6 }}
+            />
+            <div style={{ display: "flex", gap: 4 }}>
+              <button onClick={confirmInsert} style={{ flex: 1 }}>Add</button>
+              <button onClick={() => setPendingInsert(null)} style={{ flex: 1 }}>Cancel</button>
+            </div>
           </div>
         </>
       )}
