@@ -119,8 +119,6 @@ export default function AdminItemsPage() {
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; category: string; colIdx: number } | null>(null);
   const [editingLabel, setEditingLabel] = useState<{ category: string; colIdx: number } | null>(null);
-  const [pendingInsert, setPendingInsert] = useState<{ x: number; y: number; category: string; colIdx: number; side: "left" | "right" } | null>(null);
-  const [insertName, setInsertName] = useState("");
 
   function openCtx(e: React.MouseEvent, category: string, colIdx: number) {
     e.preventDefault();
@@ -128,21 +126,15 @@ export default function AdminItemsPage() {
   }
   function startInsert(side: "left" | "right") {
     if (!ctxMenu) return;
-    setPendingInsert({ ...ctxMenu, side });
-    setInsertName("");
-    setCtxMenu(null);
-  }
-  function confirmInsert() {
-    if (!pendingInsert) return;
-    const { category, colIdx, side } = pendingInsert;
+    const { category, colIdx } = ctxMenu;
     const cols = catCols[category] ?? [];
     const usedFields = new Set(cols.map(c => c.field));
     const nextField = ALL_FIELDS.find(af => !usedFields.has(af.field));
-    if (!nextField) { setPendingInsert(null); return; }
+    if (!nextField) { setCtxMenu(null); return; }
     const at = side === "left" ? colIdx : colIdx + 1;
-    const label = insertName.trim() || nextField.defaultLabel;
-    saveCols({ ...catCols, [category]: [...cols.slice(0, at), { field: nextField.field, label }, ...cols.slice(at)] });
-    setPendingInsert(null);
+    saveCols({ ...catCols, [category]: [...cols.slice(0, at), { field: nextField.field, label: "" }, ...cols.slice(at)] });
+    setEditingLabel({ category, colIdx: at });
+    setCtxMenu(null);
   }
   function removeCol(category: string, colIdx: number) {
     const cols = catCols[category] ?? [];
@@ -151,7 +143,9 @@ export default function AdminItemsPage() {
   }
   function finishEditLabel(category: string, colIdx: number, label: string) {
     const cols = catCols[category] ?? [];
-    const next = cols.map((c, i) => i === colIdx ? { ...c, label: label.trim() || c.label } : c);
+    const trimmed = label.trim();
+    if (!trimmed) { removeCol(category, colIdx); return; }
+    const next = cols.map((c, i) => i === colIdx ? { ...c, label: trimmed } : c);
     saveCols({ ...catCols, [category]: next });
     setEditingLabel(null);
   }
@@ -265,7 +259,8 @@ export default function AdminItemsPage() {
                           <input
                             autoFocus
                             defaultValue={col.label}
-                            style={{ width: 64, background: "transparent", border: "1px solid var(--accent)", borderRadius: 4, color: "inherit", fontSize: "inherit", padding: "1px 4px" }}
+                            placeholder="Col name"
+                            style={{ width: 72, background: "transparent", border: "1px solid var(--accent)", borderRadius: 4, color: "inherit", fontSize: "inherit", padding: "1px 4px" }}
                             onBlur={(e) => finishEditLabel(category, ci, e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") finishEditLabel(category, ci, e.currentTarget.value); if (e.key === "Escape") setEditingLabel(null); }}
                           />
@@ -375,26 +370,6 @@ export default function AdminItemsPage() {
         </>
       )}
 
-      {pendingInsert && (
-        <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setPendingInsert(null)} />
-          <div className="col-ctx-menu" style={{ position: "fixed", left: pendingInsert.x, top: pendingInsert.y, zIndex: 999, padding: 8 }}>
-            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6 }}>Column name</div>
-            <input
-              autoFocus
-              value={insertName}
-              onChange={(e) => setInsertName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") confirmInsert(); if (e.key === "Escape") setPendingInsert(null); }}
-              placeholder="e.g. Pcs/bag"
-              style={{ width: "100%", marginBottom: 6 }}
-            />
-            <div style={{ display: "flex", gap: 4 }}>
-              <button onClick={confirmInsert} style={{ flex: 1 }}>Add</button>
-              <button onClick={() => setPendingInsert(null)} style={{ flex: 1 }}>Cancel</button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 
