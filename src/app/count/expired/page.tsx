@@ -36,8 +36,7 @@ export default function ExpiredPage() {
   const activeRecord = record;
 
   const products = allItems
-    .filter((i) => i.appears_in.includes("expired") &&
-      (i.loss_role === "input_and_summary" || i.loss_role === "input"))
+    .filter((i) => i.appears_in.includes("expired") && i.loss_role === "input")
     .sort((a, b) => a.sort_order - b.sort_order);
 
   function getGross(id: string): number | null {
