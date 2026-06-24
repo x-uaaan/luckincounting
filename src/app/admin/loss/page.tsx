@@ -34,6 +34,8 @@ function parseFraction(s: string): number | null {
 export default function AdminLossPage() {
   const items = useItemsStore((s) => s.items);
   const updateItem = useItemsStore((s) => s.updateItem);
+  const addItem = useItemsStore((s) => s.addItem);
+  const deleteItem = useItemsStore((s) => s.deleteItem);
 
   const materialItems = items
     .filter((i) => MATERIAL_CATEGORIES.includes(i.category))
@@ -76,8 +78,7 @@ export default function AdminLossPage() {
   function saveCompMaterial(item: Item, ci: number, matId: string) {
     if (item.loss_role === "input_and_summary") {
       if (!matId || matId === item.id) return;
-      const comps = [{ source_item_id: matId, rate: item.loss_rate ?? 0 }];
-      updateItem(item.id, { loss_components: comps, loss_role: "input", loss_formula: "direct" });
+      updateItem(item.id, { loss_components: [{ source_item_id: matId, rate: item.loss_rate ?? 0 }], loss_role: "input", loss_formula: "direct" });
     } else {
       const comps = (item.loss_components ?? []).map((c, i) =>
         i === ci ? { ...c, source_item_id: matId } : c
@@ -97,33 +98,55 @@ export default function AdminLossPage() {
   }
 
   function removeComp(item: Item, ci: number) {
-    if (item.loss_role === "input_and_summary") {
-      // ias self-row: nothing to remove (single synthetic row)
-      return;
-    }
+    if (item.loss_role === "input_and_summary") return;
     const comps = (item.loss_components ?? []).filter((_, i) => i !== ci);
     updateItem(item.id, { loss_components: comps });
   }
 
-  const renderMoveCell = (idx: number, id: string, rs: number) => (
-    <td rowSpan={rs} className="loss-move-cell">
-      <div className="loss-move-btns">
-        <button className="loss-move-btn" disabled={idx === 0} onPointerDown={(e) => { e.preventDefault(); move(id, -1); }}>↑</button>
-        <button className="loss-move-btn" disabled={idx === allExpired.length - 1} onPointerDown={(e) => { e.preventDefault(); move(id, 1); }}>↓</button>
-      </div>
-    </td>
-  );
+  function addProduct() {
+    const maxOrder = allExpired.reduce((m, i) => Math.max(m, i.sort_order), 500);
+    const id = `loss_${Date.now()}`;
+    addItem({
+      id,
+      name: "New Product",
+      category: "Loss",
+      sort_order: maxOrder + 10,
+      final_sort_order: null,
+      closing_sort_order: null,
+      front_sort_order: null,
+      appears_in: ["expired"],
+      unit: "g",
+      per_bag_pcs: null,
+      back_loose_formula: null,
+      per_box_pcs: null,
+      front_per_box_pcs: null,
+      closing_per_box_pcs: null,
+      bag_size_g: null,
+      inventory_bag_size_g: null,
+      loss_formula: "direct",
+      loss_rate: null,
+      loss_components: [],
+      loss_role: "input",
+      default_container_id: null,
+      closing_inventory_formula: null,
+      closing_container_input: false,
+      unopened_stack_size: null,
+      closing_box_row: true,
+      loose_grid: false,
+      closing_input_type: "count",
+      notes: null,
+    });
+  }
 
-  const renderNameCell = (item: Item, rs: number) => (
-    <td rowSpan={rs} className="loss-product-cell">
-      <input
-        className="loss-name-edit"
-        defaultValue={item.name}
-        key={item.name}
-        onBlur={(e) => saveName(item.id, e.target.value)}
-      />
-    </td>
-  );
+  function removeProduct(item: Item) {
+    if (!window.confirm(`Delete "${item.name}"?`)) return;
+    // Loss-only items: delete entirely. Multi-stage items: remove "expired" from appears_in.
+    if (item.appears_in.every((s) => s === "expired")) {
+      deleteItem(item.id);
+    } else {
+      updateItem(item.id, { appears_in: item.appears_in.filter((s) => s !== "expired") });
+    }
+  }
 
   const matSelect = (item: Item, comp: { source_item_id: string; rate: number }, ci: number) => (
     <select
@@ -165,26 +188,59 @@ export default function AdminLossPage() {
               {allExpired.map((item, idx) => {
                 const comps = getComps(item);
                 const isIas = item.loss_role === "input_and_summary";
+                const isLossOnly = item.appears_in.every((s) => s === "expired");
                 const rs = Math.max(comps.length, 1);
+
+                const moveCell = (
+                  <td rowSpan={rs} className="reorder-cell loss-move-cell">
+                    <div className="reorder-btns" style={{ flexDirection: "column", padding: 0, gap: 3 }}>
+                      <button
+                        className="reorder-arrow"
+                        disabled={idx === 0}
+                        onPointerDown={(e) => { e.preventDefault(); move(item.id, -1); }}
+                      >↑</button>
+                      <button
+                        className="reorder-arrow"
+                        disabled={idx === allExpired.length - 1}
+                        onPointerDown={(e) => { e.preventDefault(); move(item.id, 1); }}
+                      >↓</button>
+                    </div>
+                  </td>
+                );
+
+                const nameCell = (
+                  <td rowSpan={rs} className="loss-product-cell">
+                    <input
+                      className="loss-name-edit"
+                      defaultValue={item.name}
+                      key={item.name}
+                      onBlur={(e) => saveName(item.id, e.target.value)}
+                    />
+                  </td>
+                );
 
                 if (comps.length === 0) {
                   return (
-                    <tr key={item.id}>
-                      {renderMoveCell(idx, item.id, 1)}
-                      {renderNameCell(item, 1)}
+                    <tr key={item.id} className="loss-product-group-start">
+                      {moveCell}
+                      {nameCell}
                       <td className="loss-material-cell">
                         <button className="loss-add-comp" onClick={() => addComp(item)}>+ add material</button>
                       </td>
                       <td />
-                      <td />
+                      <td className="loss-action-cell">
+                        {isLossOnly && (
+                          <button className="loss-rm-comp" onClick={() => removeProduct(item)} title="Delete product">🗑</button>
+                        )}
+                      </td>
                     </tr>
                   );
                 }
 
                 return comps.map((comp, ci) => (
-                  <tr key={`${item.id}-${ci}`}>
-                    {ci === 0 && renderMoveCell(idx, item.id, rs)}
-                    {ci === 0 && renderNameCell(item, rs)}
+                  <tr key={`${item.id}-${ci}`} className={ci === 0 ? "loss-product-group-start" : ""}>
+                    {ci === 0 && moveCell}
+                    {ci === 0 && nameCell}
                     <td className="loss-material-cell">
                       {matSelect(item, comp, ci)}
                     </td>
@@ -199,10 +255,13 @@ export default function AdminLossPage() {
                     </td>
                     <td className="loss-action-cell">
                       {ci === comps.length - 1 && (
-                        <button className="loss-add-comp" onClick={() => addComp(item)} title="Add row">+</button>
+                        <button className="loss-add-comp" onClick={() => addComp(item)} title="Add material row">+</button>
                       )}
                       {!isIas && (
-                        <button className="loss-rm-comp" onClick={() => removeComp(item, ci)} title="Remove">×</button>
+                        <button className="loss-rm-comp" onClick={() => removeComp(item, ci)} title="Remove material">×</button>
+                      )}
+                      {ci === 0 && isLossOnly && (
+                        <button className="loss-rm-comp" onClick={() => removeProduct(item)} title="Delete product" style={{ marginLeft: 4 }}>🗑</button>
                       )}
                     </td>
                   </tr>
@@ -211,6 +270,9 @@ export default function AdminLossPage() {
             </tbody>
           </table>
         </div>
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <button className="btn-secondary" onClick={addProduct}>+ Add product</button>
       </div>
     </div>
   );

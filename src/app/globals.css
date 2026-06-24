@@ -810,13 +810,10 @@ body {
 /* ===== Admin Loss table ===== */
 .app-dark .loss-move-th { width: 44px !important; }
 .app-dark .loss-action-th { width: 52px !important; }
-.app-dark .loss-move-cell {
-  border-right: 1px solid #2e3650;
-  vertical-align: middle;
-  padding: 4px !important;
-  width: 44px;
-  text-align: center;
-}
+.app-dark .loss-move-cell { border-right: 1px solid #2e3650; vertical-align: middle; padding: 4px !important; width: 44px; text-align: center; }
+/* reorder-btns inside loss table: column layout */
+.app-dark .loss-rate-table .reorder-btns { flex-direction: column; padding: 0; gap: 3px; justify-content: center; }
+.app-dark .loss-rate-table .reorder-arrow { height: 26px; min-width: 28px; flex: none; }
 .app-dark .loss-move-btns {
   display: flex;
   flex-direction: column;
@@ -904,178 +901,39 @@ body {
 .app-dark .loss-rate-edit:hover { border-bottom-color: #3a4460; }
 .app-dark .loss-rate-edit:focus { border-bottom-color: #5a7fff; }
 
-/* ===== Material Exp table ===== */
-.app-dark .loss-exp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.app-dark .loss-exp-table th {
-  background: #1e2438;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 7px 10px;
-  text-align: left;
-  border-bottom: 1px solid #2e3650;
-}
-.app-dark .loss-exp-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #1e2438;
-  vertical-align: middle;
-}
-.app-dark .loss-exp-table tbody tr:last-child td { border-bottom: none; }
-.app-dark .lexp-input-th { width: 110px; }
-.app-dark .lexp-ctn-th { width: 140px; }
-.app-dark .lexp-rate-th { width: 60px; text-align: right; }
-.app-dark .lexp-result-th { width: 80px; text-align: right; }
-.app-dark .lexp-product-cell { font-weight: 500; font-size: 13px; border-right: 1px solid #2e3650; }
-.app-dark .lexp-input-cell { border-right: 1px solid #2e3650; }
-.app-dark .lexp-input-cell input { width: 72px; }
-.app-dark .lexp-net {
-  font-size: 10px;
-  color: var(--text-secondary);
-  margin-top: 3px;
-  font-family: monospace;
-  white-space: nowrap;
-}
-.app-dark .lexp-ctn-cell { border-right: 1px solid #2e3650; }
+/* ===== Material Exp table (lexp-* overrides on admin-table) ===== */
+.app-dark .lexp-table { white-space: normal; }
+.app-dark .lexp-move-th { width: 44px !important; }
+.app-dark .lexp-move-cell { width: 44px; padding: 4px !important; text-align: center; }
+.app-dark .lexp-product-th { min-width: 100px; }
+.app-dark .lexp-input-th { width: 105px; }
+.app-dark .lexp-ctn-th { width: 130px; }
+.app-dark .lexp-rate-th { width: 50px; text-align: right; }
+.app-dark .lexp-result-th { width: 78px; text-align: right; }
+/* Product group separator — heavier top border on the first row of each product */
+.app-dark .lexp-table tbody tr.lexp-group-start td { border-top: 1px solid var(--border); }
+.app-dark .lexp-table tbody tr.lexp-group-cont td { border-top: 1px solid #161b28; }
+.app-dark .lexp-product-cell { font-weight: 600; font-size: 13px; border-right: 1px solid var(--border); vertical-align: middle; }
+.app-dark .lexp-input-cell { border-right: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+.app-dark .lexp-input-cell input { width: 72px !important; min-width: 72px; }
+.app-dark .lexp-net { font-size: 10px; color: var(--text-secondary); margin-top: 2px; font-family: monospace; }
+.app-dark .lexp-ctn-cell { border-right: 1px solid var(--border); vertical-align: middle; }
 .app-dark .lexp-ctn-select {
-  font-size: 11px;
-  background: #1a1f2e;
-  border: 1px solid #2e3650;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  padding: 3px 5px;
-  min-width: 120px;
-  width: 100%;
-}
-.app-dark .lexp-mat-cell { color: var(--text-secondary); font-size: 12px; }
-.app-dark .lexp-rate-cell {
-  font-size: 11px;
-  font-family: monospace;
-  color: var(--text-secondary);
-  text-align: right;
-}
-.app-dark .lexp-result-cell {
-  text-align: right;
-  font-weight: 500;
-  font-family: monospace;
-}
-
-/* Material Exp card rows */
-.app-dark .lc-mat-row {
-  border-top: 1px solid #2e3650;
-  padding: 6px 16px !important;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.app-dark .lc-mat-name {
-  flex: 1;
-  font-size: 12px;
-  color: var(--text-secondary);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.app-dark .lc-rate {
-  font-size: 11px;
-  font-family: monospace;
-  color: var(--text-secondary);
-  min-width: 40px;
-  text-align: right;
-}
-.app-dark .lc-result {
-  font-size: 13px;
-  font-weight: 500;
-  min-width: 60px;
-  text-align: right;
-}
-
-.app-dark .lc-container-select {
-  font-size: 11px;
-  background: #1a1f2e;
-  border: 1px solid #2e3650;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  padding: 2px 4px;
-  max-width: 90px;
-}
-
-/* ===== Material Exp — Loss Calc & Summary tables ===== */
-.app-dark .loss-calc-wrap { overflow-x: auto; }
-.app-dark .loss-calc-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.app-dark .loss-calc-table th {
-  background: #1e2438;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 1px solid #2e3650;
-}
-.app-dark .loss-calc-table td {
-  padding: 7px 12px;
-  border-bottom: 1px solid #1e2438;
-  vertical-align: middle;
-}
-.app-dark .loss-calc-table tr:last-child td { border-bottom: none; }
-.app-dark .lc-product-cell {
-  font-weight: 500;
-  border-right: 1px solid #2e3650;
-  vertical-align: top;
-  padding-top: 10px !important;
-  white-space: nowrap;
-}
-.app-dark .lc-input-cell {
-  border-right: 1px solid #2e3650;
-  vertical-align: top;
-  padding: 6px 10px !important;
-  min-width: 100px;
-}
-.app-dark .lc-input-wrap { display: flex; flex-direction: column; gap: 3px; }
-.app-dark .lc-container-row select {
-  font-size: 11px;
-  background: #1a1f2e;
-  border: 1px solid #2e3650;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  padding: 2px 4px;
-  width: 100%;
-}
-.app-dark .lc-weight-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.app-dark .lc-tare {
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-.app-dark .lc-total-vol {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-family: monospace;
-}
-.app-dark .lc-material-cell { color: var(--text-secondary); font-size: 12px; }
-.app-dark .lc-dash { color: #444; }
-.app-dark .lc-rate-cell {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-family: monospace;
-  text-align: right;
-}
-.app-dark .lc-result-cell {
-  text-align: right;
-  font-family: monospace;
-  font-size: 13px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   color: var(--text-primary);
+  font-size: 12px;
+  height: 28px;
+  padding: 0 6px;
+  min-width: 110px;
+  width: 100%;
+  outline: none;
 }
+.app-dark .lexp-ctn-select:focus { border-color: var(--accent); }
+.app-dark .lexp-mat-cell { color: var(--text-secondary); font-size: 12px; }
+.app-dark .lexp-rate-cell { font-size: 11px; font-family: monospace; color: var(--text-secondary); text-align: right; }
+.app-dark .lexp-result-cell { text-align: right; font-weight: 600; font-family: monospace; font-size: 13px; }
 
 /* ===== Admin CRUD tables ===== */
 .app-dark .admin-table-wrap {
