@@ -129,7 +129,7 @@ export default function ExpiredPage() {
         </div>
       </div>
 
-      {/* Loss Report table — aggregated by material */}
+      {/* Loss Report table — grouped by material, individual calc rows per product */}
       <div className="category-label">Loss Report</div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div className="admin-table-wrap" style={{ border: "none", borderRadius: 0 }}>
@@ -137,12 +137,15 @@ export default function ExpiredPage() {
             <thead>
               <tr>
                 <th className="lexp-product-th">Material</th>
+                <th className="lexp-net-th">Net Weight (g)</th>
+                <th className="lexp-rate-th">Rate</th>
                 <th className="lexp-result-th">Result (g)</th>
               </tr>
             </thead>
             <tbody>
               {(() => {
-                const totals = new Map<string, { name: string; total: number }>();
+                // Build ordered map: materialId → { name, rows: [{net, rate, result}] }
+                const matMap = new Map<string, { name: string; rows: { net: number | null; rate: number; result: number | null }[] }>();
                 for (const product of products) {
                   const isIas = product.loss_role === "input_and_summary";
                   const comps = isIas
@@ -153,17 +156,27 @@ export default function ExpiredPage() {
                     if (!comp.source_item_id) continue;
                     const matItem = allItems.find((i) => i.id === comp.source_item_id);
                     const name = isIas ? product.name : (matItem?.name ?? comp.source_item_id);
-                    const result = net != null ? net * comp.rate : 0;
-                    const prev = totals.get(comp.source_item_id);
-                    totals.set(comp.source_item_id, { name, total: (prev?.total ?? 0) + result });
+                    const result = net != null ? net * comp.rate : null;
+                    const existing = matMap.get(comp.source_item_id);
+                    if (existing) {
+                      existing.rows.push({ net, rate: comp.rate, result });
+                    } else {
+                      matMap.set(comp.source_item_id, { name, rows: [{ net, rate: comp.rate, result }] });
+                    }
                   }
                 }
-                return [...totals.entries()].map(([id, { name, total }]) => (
-                  <tr key={id}>
-                    <td className="lexp-product-cell">{name}</td>
-                    <td className="lexp-result-cell">{total > 0 ? fmt(total) : "—"}</td>
-                  </tr>
-                ));
+                return [...matMap.entries()].flatMap(([matId, { name, rows }]) =>
+                  rows.map((row, ri) => (
+                    <tr key={`${matId}-${ri}`} className={ri === 0 ? "lexp-group-start" : "lexp-group-cont"}>
+                      {ri === 0 && (
+                        <td rowSpan={rows.length} className="lexp-product-cell">{name}</td>
+                      )}
+                      <td className="lexp-net-cell">{row.net != null ? row.net : "—"}</td>
+                      <td className="lexp-rate-cell">{toFraction(row.rate)}</td>
+                      <td className="lexp-result-cell">{row.result != null ? fmt(row.result) : "—"}</td>
+                    </tr>
+                  ))
+                );
               })()}
             </tbody>
           </table>
