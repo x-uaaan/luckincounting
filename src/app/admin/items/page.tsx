@@ -20,7 +20,7 @@ const CATEGORY_COLUMNS: Record<string, { field: NumericField; label: string }[]>
     { field: "per_box_pcs", label: "Bag/ctn" },
     { field: "per_bag_pcs", label: "Pcs/bag" },
   ],
-  Syrup: [{ field: "bag_size_g", label: "ml" }],
+  Syrup: [],
   "Solid Beverage": [
     { field: "per_box_pcs", label: "Bag/ctn" },
     { field: "bag_size_g", label: "g/bag" },
@@ -31,16 +31,13 @@ const CATEGORY_COLUMNS: Record<string, { field: NumericField; label: string }[]>
   ],
   Frozen: [
     { field: "per_box_pcs", label: "Pcs/ctn" },
-    { field: "bag_size_g", label: "ml" },
   ],
   "Raw Material": [
     { field: "per_box_pcs", label: "Box/ctn" },
-    { field: "bag_size_g", label: "ml/box" },
   ],
   "Dairy & Soda": [
     { field: "per_bag_pcs", label: "/bag" },
     { field: "per_box_pcs", label: "/ctn" },
-    { field: "bag_size_g", label: "Size" },
   ],
   Merch: [{ field: "per_box_pcs", label: "Pcs/ctn" }],
 };
