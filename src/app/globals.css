@@ -940,6 +940,15 @@ body {
 .app-dark .lexp-rate-cell { font-size: 12px; font-family: monospace; color: var(--text-secondary); text-align: right; }
 .app-dark .lexp-result-cell { text-align: right; font-weight: 600; font-family: monospace; font-size: 13px; }
 
+/* ===== Column context menu ===== */
+.app-dark .col-ctx-menu { background: #1e2538; border: 1px solid #2e3650; border-radius: 8px; padding: 4px; min-width: 170px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.app-dark .col-ctx-menu button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text-primary); font-size: 13px; padding: 6px 10px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.app-dark .col-ctx-menu button:hover { background: #2a3047; }
+.app-dark .col-ctx-menu .col-ctx-danger { color: #f87171; }
+.app-dark .col-ctx-menu .col-ctx-danger:hover { background: #2a1a1a; }
+.app-dark .col-ctx-sep { height: 1px; background: #2e3650; margin: 4px 0; }
+.app-dark .col-ctx-group { margin-bottom: 1px; }
+
 /* ===== Admin CRUD tables ===== */
 .app-dark .admin-table-wrap {
   overflow-x: auto;

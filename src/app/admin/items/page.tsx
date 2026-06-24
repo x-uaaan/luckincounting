@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminHeader from "@/components/AdminHeader";
 import { useItemsStore } from "@/store/useItemsStore";
 import type { Item, Stage } from "@/lib/types";
@@ -101,6 +101,48 @@ export default function AdminItemsPage() {
     lower.forEach((item, i) => updateItem(item.id, { sort_order: allOrders[upper.length + i] }));
   }
 
+  const ALL_FIELDS: { field: NumericField; defaultLabel: string }[] = [
+    { field: "per_bag_pcs", defaultLabel: "Pcs/bag" },
+    { field: "per_box_pcs", defaultLabel: "Pcs/ctn" },
+    { field: "bag_size_g", defaultLabel: "Size" },
+  ];
+
+  const [catCols, setCatCols] = useState<Record<string, { field: NumericField; label: string }[]>>(CATEGORY_COLUMNS);
+  useEffect(() => {
+    const saved = localStorage.getItem("admin_items_columns");
+    if (saved) { try { setCatCols(JSON.parse(saved)); } catch { /* ignore */ } }
+  }, []);
+  function saveCols(next: typeof catCols) {
+    setCatCols(next);
+    localStorage.setItem("admin_items_columns", JSON.stringify(next));
+  }
+
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; category: string; colIdx: number } | null>(null);
+  const [editingLabel, setEditingLabel] = useState<{ category: string; colIdx: number } | null>(null);
+
+  function openCtx(e: React.MouseEvent, category: string, colIdx: number) {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, category, colIdx });
+  }
+  function insertCol(category: string, colIdx: number, side: "left" | "right", af: { field: NumericField; defaultLabel: string }) {
+    const cols = catCols[category] ?? [];
+    const newCol = { field: af.field, label: af.defaultLabel };
+    const at = side === "left" ? colIdx : colIdx + 1;
+    saveCols({ ...catCols, [category]: [...cols.slice(0, at), newCol, ...cols.slice(at)] });
+    setCtxMenu(null);
+  }
+  function removeCol(category: string, colIdx: number) {
+    const cols = catCols[category] ?? [];
+    saveCols({ ...catCols, [category]: cols.filter((_, i) => i !== colIdx) });
+    setCtxMenu(null);
+  }
+  function finishEditLabel(category: string, colIdx: number, label: string) {
+    const cols = catCols[category] ?? [];
+    const next = cols.map((c, i) => i === colIdx ? { ...c, label: label.trim() || c.label } : c);
+    saveCols({ ...catCols, [category]: next });
+    setEditingLabel(null);
+  }
+
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [newItemDrafts, setNewItemDrafts] = useState<
     Record<string, { name: string; unit: string; appears_in: Stage[] }>
@@ -185,7 +227,9 @@ export default function AdminItemsPage() {
           .filter((i) => i.category === category)
           .sort((a, b) => a.sort_order - b.sort_order);
         const draft = draftFor(category);
-        const columns = CATEGORY_COLUMNS[category] ?? [];
+        const columns = catCols[category] ?? [];
+        const usedFields = new Set(columns.map(c => c.field));
+        const availableFields = ALL_FIELDS.filter(af => !usedFields.has(af.field));
 
         return (
           <div key={category} className="card">
@@ -204,8 +248,18 @@ export default function AdminItemsPage() {
                     <th style={{ width: 68, textAlign: "center" }}></th>
                     <th>Name</th>
                     <th>Unit</th>
-                    {columns.map((col) => (
-                      <th key={col.field}>{col.label}</th>
+                    {columns.map((col, ci) => (
+                      <th key={col.field} onContextMenu={(e) => openCtx(e, category, ci)} style={{ cursor: "context-menu", userSelect: "none" }}>
+                        {editingLabel?.category === category && editingLabel?.colIdx === ci ? (
+                          <input
+                            autoFocus
+                            defaultValue={col.label}
+                            style={{ width: 64, background: "transparent", border: "1px solid var(--accent)", borderRadius: 4, color: "inherit", fontSize: "inherit", padding: "1px 4px" }}
+                            onBlur={(e) => finishEditLabel(category, ci, e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") finishEditLabel(category, ci, e.currentTarget.value); if (e.key === "Escape") setEditingLabel(null); }}
+                          />
+                        ) : col.label}
+                      </th>
                     ))}
                     <th></th>
                   </tr>
@@ -292,6 +346,29 @@ export default function AdminItemsPage() {
           </div>
         );
       })}
+
+      {ctxMenu && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setCtxMenu(null)} onContextMenu={(e) => { e.preventDefault(); setCtxMenu(null); }} />
+          <div className="col-ctx-menu" style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 999 }}>
+            {availableFieldsForCtx(ctxMenu.category).map((af) => (
+              <div key={af.field} className="col-ctx-group">
+                <button onClick={() => insertCol(ctxMenu.category, ctxMenu.colIdx, "left", af)}>← Insert &quot;{af.defaultLabel}&quot;</button>
+                <button onClick={() => insertCol(ctxMenu.category, ctxMenu.colIdx, "right", af)}>Insert &quot;{af.defaultLabel}&quot; →</button>
+              </div>
+            ))}
+            {availableFieldsForCtx(ctxMenu.category).length > 0 && <div className="col-ctx-sep" />}
+            <button onClick={() => { setEditingLabel({ category: ctxMenu.category, colIdx: ctxMenu.colIdx }); setCtxMenu(null); }}>Edit name</button>
+            <button className="col-ctx-danger" onClick={() => removeCol(ctxMenu.category, ctxMenu.colIdx)}>Remove column</button>
+          </div>
+        </>
+      )}
     </div>
   );
+
+  function availableFieldsForCtx(category: string) {
+    const cols = catCols[category] ?? [];
+    const used = new Set(cols.map(c => c.field));
+    return ALL_FIELDS.filter(af => !used.has(af.field));
+  }
 }
