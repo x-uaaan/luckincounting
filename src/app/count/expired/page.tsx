@@ -145,7 +145,7 @@ export default function ExpiredPage() {
             <tbody>
               {(() => {
                 // Build ordered map: materialId → { name, rows: [{net, rate, result}] }
-                const matMap = new Map<string, { name: string; rows: { net: number | null; rate: number; result: number | null }[] }>();
+                const matMap = new Map<string, { name: string; rows: { net: number | null; rate: number; result: number | null; productName: string }[] }>();
                 for (const product of products) {
                   const isIas = product.loss_role === "input_and_summary";
                   const comps = isIas
@@ -159,24 +159,30 @@ export default function ExpiredPage() {
                     const result = net != null ? net * comp.rate : null;
                     const existing = matMap.get(comp.source_item_id);
                     if (existing) {
-                      existing.rows.push({ net, rate: comp.rate, result });
+                      existing.rows.push({ net, rate: comp.rate, result, productName: product.name });
                     } else {
-                      matMap.set(comp.source_item_id, { name, rows: [{ net, rate: comp.rate, result }] });
+                      matMap.set(comp.source_item_id, { name, rows: [{ net, rate: comp.rate, result, productName: product.name }] });
                     }
                   }
                 }
-                return [...matMap.entries()].flatMap(([matId, { name, rows }]) =>
-                  rows.map((row, ri) => (
+                return [...matMap.entries()].flatMap(([matId, { name, rows }]) => {
+                  const total = rows.reduce((s, r) => s + (r.result ?? 0), 0);
+                  const hasAnyResult = rows.some((r) => r.result != null);
+                  return rows.map((row, ri) => (
                     <tr key={`${matId}-${ri}`} className={ri === 0 ? "lexp-group-start" : "lexp-group-cont"}>
-                      {ri === 0 && (
-                        <td rowSpan={rows.length} className="lexp-product-cell">{name}</td>
-                      )}
+                      <td className="lexp-product-cell">
+                        {rows.length > 1 ? `${name} (${row.productName})` : name}
+                      </td>
                       <td className="lexp-net-cell">{row.net != null ? row.net : "—"}</td>
                       <td className="lexp-rate-cell">{toFraction(row.rate)}</td>
-                      <td className="lexp-result-cell">{row.result != null ? fmt(row.result) : "—"}</td>
+                      {ri === 0 && (
+                        <td rowSpan={rows.length} className="lexp-result-cell" style={{ verticalAlign: "middle" }}>
+                          {hasAnyResult ? fmt(total) : "—"}
+                        </td>
+                      )}
                     </tr>
-                  ))
-                );
+                  ));
+                });
               })()}
             </tbody>
           </table>
