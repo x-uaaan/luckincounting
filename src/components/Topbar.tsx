@@ -8,14 +8,13 @@ import { useItemsStore } from "@/store/useItemsStore";
 
 const STAGES = [
   { slug: "back", label: "Back" },
-  { slug: "front", label: "Front" },
   { slug: "expired", label: "Material Exp" },
   { slug: "closing", label: "Closing" },
   { slug: "result", label: "Final" },
 ];
 
-const COUNT_SLUGS = new Set(["back", "front", "expired", "closing", "result"]);
-const CLEARABLE_SLUGS = ["back", "front", "expired", "closing"] as const;
+const COUNT_SLUGS = new Set(["back", "expired", "closing", "result"]);
+const CLEARABLE_SLUGS = ["back", "expired", "closing"] as const;
 type ClearableSlug = typeof CLEARABLE_SLUGS[number];
 
 export default function Topbar() {
