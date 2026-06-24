@@ -297,6 +297,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .app-dark .field .lbl {
   font-size: 9px;
