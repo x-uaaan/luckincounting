@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 
 const STAGES = [
@@ -14,13 +13,10 @@ const STAGES = [
 ];
 
 const COUNT_SLUGS = new Set(["back", "expired", "closing", "result"]);
-const CLEARABLE_SLUGS = ["back", "expired", "closing"] as const;
-type ClearableSlug = typeof CLEARABLE_SLUGS[number];
 
 export default function Topbar() {
   const pathname = usePathname();
   const [adminOpen, setAdminOpen] = useState(false);
-  const clearStage = useCountingStore((s) => s.clearStage);
   const reorderMode = useItemsStore((s) => s.reorderMode);
   const setReorderMode = useItemsStore((s) => s.setReorderMode);
 
@@ -29,13 +25,6 @@ export default function Topbar() {
 
   const slug = pathname?.split("/").pop() ?? "";
   const isCountPage = COUNT_SLUGS.has(slug);
-  const isClearable = CLEARABLE_SLUGS.includes(slug as ClearableSlug);
-
-  function handleClear() {
-    if (!isClearable) return;
-    if (!window.confirm("Clear all inputs for this tab?")) return;
-    clearStage(slug as ClearableSlug);
-  }
 
   function handleAdminClick() {
     clickCount.current += 1;
@@ -77,23 +66,13 @@ export default function Topbar() {
         </nav>
 
         {reorderMode ? (
-          <>
-            <button className="clear-btn" onClick={handleClear} disabled={!isClearable}>
-              Clear
-            </button>
-            <button className="admin-btn reorder-active" onClick={() => setReorderMode(false)}>
-              Done
-            </button>
-          </>
+          <button className="admin-btn reorder-active" onClick={() => setReorderMode(false)}>
+            Done
+          </button>
         ) : (
-          <>
-            <button className="clear-btn" onClick={handleClear} disabled={!isClearable}>
-              Clear
-            </button>
-            <button className="admin-btn" onClick={handleAdminClick}>
-              Admin
-            </button>
-          </>
+          <button className="admin-btn" onClick={handleAdminClick}>
+            Admin
+          </button>
         )}
       </div>
 
@@ -101,6 +80,7 @@ export default function Topbar() {
       <div className={`admin-panel ${adminOpen ? "open" : ""}`}>
         <button className="close-btn" onClick={() => setAdminOpen(false)}>✕</button>
         <h2>Admin</h2>
+        <Link href="/count/back" className="admin-link" onClick={() => setAdminOpen(false)}>Counting</Link>
         <Link href="/admin/items" className="admin-link" onClick={() => setAdminOpen(false)}>Items</Link>
         <Link href="/admin/loss" className="admin-link" onClick={() => setAdminOpen(false)}>Loss</Link>
         <Link href="/admin/containers" className="admin-link" onClick={() => setAdminOpen(false)}>Containers</Link>

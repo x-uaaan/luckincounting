@@ -7,7 +7,6 @@ import type { Item, Stage } from "@/lib/types";
 
 const STAGES: { id: Stage; label: string }[] = [
   { id: "back", label: "Back" },
-  { id: "front", label: "Front" },
   { id: "expired", label: "Mat. Exp" },
   { id: "closing", label: "Closing" },
 ];

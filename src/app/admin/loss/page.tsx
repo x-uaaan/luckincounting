@@ -108,7 +108,7 @@ export default function AdminLossPage() {
     const id = `loss_${Date.now()}`;
     addItem({
       id,
-      name: "New Product",
+      name: "",
       category: "Loss",
       sort_order: maxOrder + 10,
       final_sort_order: null,
@@ -190,6 +190,8 @@ export default function AdminLossPage() {
                 const isIas = item.loss_role === "input_and_summary";
                 const isLossOnly = item.appears_in.every((s) => s === "expired");
                 const rs = Math.max(comps.length, 1);
+                const rateSum = comps.reduce((s, c) => s + c.rate, 0);
+                const rateWarn = comps.length > 1 && rateSum > 1 + 1e-6;
 
                 const moveCell = (
                   <td rowSpan={rs} className="reorder-cell loss-move-cell">
@@ -213,9 +215,13 @@ export default function AdminLossPage() {
                     <input
                       className="loss-name-edit"
                       defaultValue={item.name}
-                      key={item.name}
+                      placeholder="Product name"
+                      key={item.id + item.name}
                       onBlur={(e) => saveName(item.id, e.target.value)}
                     />
+                    {rateWarn && (
+                      <span className="loss-rate-warn" title={`Rate sum = ${rateSum.toFixed(4)} > 1`}>⚠</span>
+                    )}
                   </td>
                 );
 

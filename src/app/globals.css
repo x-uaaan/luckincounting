@@ -812,7 +812,8 @@ body {
 .app-dark .loss-action-th { width: 52px !important; }
 .app-dark .loss-move-cell { border-right: 1px solid #2e3650; vertical-align: middle; padding: 4px !important; width: 44px; text-align: center; }
 /* reorder-btns inside loss table: column layout */
-.app-dark .loss-rate-table .reorder-btns { flex-direction: column; padding: 0; gap: 3px; justify-content: center; }
+.app-dark .loss-rate-table .reorder-btns { flex-direction: column !important; padding: 0 !important; gap: 3px; justify-content: center; }
+.app-dark .loss-rate-warn { display: inline-block; margin-left: 6px; color: #f59e0b; font-size: 13px; vertical-align: middle; cursor: default; }
 .app-dark .loss-rate-table .reorder-arrow { height: 26px; min-width: 28px; flex: none; }
 .app-dark .loss-move-btns {
   display: flex;
