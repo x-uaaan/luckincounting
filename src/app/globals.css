@@ -700,8 +700,10 @@ body {
   text-align: center;
 }
 .app-dark .reorder-cell {
-  width: 64px;
+  width: 68px;
   padding: 0 4px;
+  text-align: center;
+  vertical-align: middle;
 }
 .app-dark .reorder-cell .reorder-btns {
   flex-direction: row;
@@ -810,10 +812,10 @@ body {
 /* ===== Admin Loss table ===== */
 .app-dark .loss-move-th { width: 44px !important; }
 .app-dark .loss-action-th { width: 52px !important; }
-.app-dark .loss-move-cell { border-right: 1px solid #2e3650; vertical-align: middle; padding: 4px !important; width: 44px; text-align: center; }
+.app-dark .loss-move-cell { border-right: 1px solid #2e3650; vertical-align: middle; padding: 4px !important; width: 68px; text-align: center; }
 /* reorder-pair: presentable horizontal segmented button pair for tables */
 .app-dark .reorder-pair { display: inline-flex; border-radius: 7px; overflow: hidden; border: 1px solid #2e3650; vertical-align: middle; }
-.app-dark .reorder-pair button { height: 28px; width: 30px; background: #1a2035; border: none; color: #94a3b8; font-size: 13px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; line-height: 1; }
+.app-dark .reorder-pair button { height: 28px; width: 32px; background: #1a2035; border: none; color: #94a3b8; font-size: 12px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; line-height: 1; }
 .app-dark .reorder-pair button:not(:last-child) { border-right: 1px solid #2e3650; }
 .app-dark .reorder-pair button:disabled { opacity: 0.22; cursor: default; }
 .app-dark .reorder-pair button:active:not(:disabled) { background: #2a3047; }
@@ -908,7 +910,7 @@ body {
 /* ===== Material Exp table (lexp-* overrides on admin-table) ===== */
 .app-dark .lexp-table { white-space: normal; }
 .app-dark .lexp-move-th { width: 60px !important; }
-.app-dark .lexp-move-cell { width: 60px; padding: 4px !important; text-align: center; vertical-align: middle; white-space: nowrap; }
+.app-dark .lexp-move-cell { width: 68px; padding: 4px !important; text-align: center; vertical-align: middle; white-space: nowrap; }
 .app-dark .lexp-product-th { min-width: 130px; }
 .app-dark .lexp-input-th { width: 110px; }
 .app-dark .lexp-ctn-th { width: 160px; }

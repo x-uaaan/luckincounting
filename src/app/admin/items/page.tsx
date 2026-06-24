@@ -204,7 +204,7 @@ export default function AdminItemsPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 68 }}></th>
+                    <th style={{ width: 68, textAlign: "center" }}></th>
                     <th>Name</th>
                     <th>Unit</th>
                     {columns.map((col) => (
