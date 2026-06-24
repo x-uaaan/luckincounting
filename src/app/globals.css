@@ -904,20 +904,20 @@ body {
 
 /* ===== Material Exp table (lexp-* overrides on admin-table) ===== */
 .app-dark .lexp-table { white-space: normal; }
-.app-dark .lexp-move-th { width: 44px !important; }
-.app-dark .lexp-move-cell { width: 44px; padding: 4px !important; text-align: center; }
-.app-dark .lexp-product-th { min-width: 100px; }
-.app-dark .lexp-input-th { width: 105px; }
-.app-dark .lexp-ctn-th { width: 130px; }
-.app-dark .lexp-rate-th { width: 50px; text-align: right; }
-.app-dark .lexp-result-th { width: 78px; text-align: right; }
-/* Product group separator — heavier top border on the first row of each product */
-.app-dark .lexp-table tbody tr.lexp-group-start td { border-top: 1px solid var(--border); }
-.app-dark .lexp-table tbody tr.lexp-group-cont td { border-top: 1px solid #161b28; }
+.app-dark .lexp-move-th { width: 60px !important; }
+.app-dark .lexp-move-cell { width: 60px; padding: 4px !important; text-align: center; vertical-align: middle; }
+.app-dark .lexp-product-th { min-width: 130px; }
+.app-dark .lexp-input-th { width: 110px; }
+.app-dark .lexp-ctn-th { width: 160px; }
+.app-dark .lexp-net-th { width: 140px; }
+.app-dark .lexp-rate-th { width: 60px; text-align: right; }
+.app-dark .lexp-result-th { width: 90px; text-align: right; }
 .app-dark .lexp-product-cell { font-weight: 600; font-size: 13px; border-right: 1px solid var(--border); vertical-align: middle; }
 .app-dark .lexp-input-cell { border-right: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
-.app-dark .lexp-input-cell input { width: 72px !important; min-width: 72px; }
+.app-dark .lexp-input-cell input { width: 80px !important; min-width: 80px; }
 .app-dark .lexp-net { font-size: 10px; color: var(--text-secondary); margin-top: 2px; font-family: monospace; }
+.app-dark .lexp-net-cell { vertical-align: middle; font-family: monospace; font-size: 13px; }
+.app-dark .lexp-net-val { font-weight: 600; }
 .app-dark .lexp-ctn-cell { border-right: 1px solid var(--border); vertical-align: middle; }
 .app-dark .lexp-ctn-select {
   background: var(--input-bg);
@@ -927,13 +927,12 @@ body {
   font-size: 12px;
   height: 28px;
   padding: 0 6px;
-  min-width: 110px;
+  min-width: 130px;
   width: 100%;
   outline: none;
 }
 .app-dark .lexp-ctn-select:focus { border-color: var(--accent); }
-.app-dark .lexp-mat-cell { color: var(--text-secondary); font-size: 12px; }
-.app-dark .lexp-rate-cell { font-size: 11px; font-family: monospace; color: var(--text-secondary); text-align: right; }
+.app-dark .lexp-rate-cell { font-size: 12px; font-family: monospace; color: var(--text-secondary); text-align: right; }
 .app-dark .lexp-result-cell { text-align: right; font-weight: 600; font-family: monospace; font-size: 13px; }
 
 /* ===== Admin CRUD tables ===== */

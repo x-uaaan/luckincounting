@@ -78,9 +78,6 @@ export default function AdminItemsPage() {
   const updateItem = useItemsStore((s) => s.updateItem);
   const deleteItem = useItemsStore((s) => s.deleteItem);
   const addItem = useItemsStore((s) => s.addItem);
-  const deletedItems = useItemsStore((s) => s.deletedItems);
-  const restoreItem = useItemsStore((s) => s.restoreItem);
-  const purgeDeletedItem = useItemsStore((s) => s.purgeDeletedItem);
 
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [newItemDrafts, setNewItemDrafts] = useState<
@@ -160,38 +157,6 @@ export default function AdminItemsPage() {
         New items are always added to the Final (Sheet2) sheet.
       </p>
 
-      {deletedItems.length > 0 && (
-        <div className="card">
-          <div className="card-head">
-            <div className="title" style={{ color: "#f87171" }}>Recently Deleted</div>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Category</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {deletedItems.map((item) => (
-                  <tr key={item.id}>
-                    <td style={{ opacity: 0.7 }}>{item.name}</td>
-                    <td style={{ opacity: 0.7 }}>{item.category}</td>
-                    <td>
-                      <div className="row-actions">
-                        <button onClick={() => restoreItem(item.id)}>Restore</button>
-                        <button onClick={() => purgeDeletedItem(item.id)}>Purge</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {categories.map((category) => {
         const categoryItems = items

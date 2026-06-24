@@ -5,7 +5,6 @@ import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import NumericInput from "@/components/NumericInput";
 import ReorderButtons from "@/components/ReorderButtons";
-import type { Item } from "@/lib/types";
 
 function toFraction(n: number): string {
   if (n === 0) return "0";
@@ -65,36 +64,9 @@ export default function ExpiredPage() {
     setMaterialLoss(id, { container_id: containerId || null, gross_weight: gross, rate_value: null });
   }
 
-  function computeSummary(): Map<string, number> {
-    const totals = new Map<string, number>();
-    for (const p of products) {
-      const net = getNet(p.id);
-      if (net == null) continue;
-      if (p.loss_role === "input_and_summary") {
-        totals.set(p.id, (totals.get(p.id) ?? 0) + net * (p.loss_rate ?? 0));
-      } else {
-        for (const c of p.loss_components ?? []) {
-          if (!c.source_item_id) continue;
-          totals.set(c.source_item_id, (totals.get(c.source_item_id) ?? 0) + net * c.rate);
-        }
-      }
-    }
-    return totals;
-  }
-
-  const summary = computeSummary();
-
-  const summaryItemIds = new Set<string>();
-  for (const p of products) {
-    if (p.loss_role === "input_and_summary") summaryItemIds.add(p.id);
-    else for (const c of p.loss_components ?? []) if (c.source_item_id) summaryItemIds.add(c.source_item_id);
-  }
-  const summaryRows = [...summaryItemIds]
-    .map((id) => ({ id, item: allItems.find((i) => i.id === id), total: summary.get(id) ?? 0 }))
-    .filter((r) => r.item != null) as { id: string; item: Item; total: number }[];
-
   return (
     <>
+      {/* Product input table */}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div className="admin-table-wrap" style={{ border: "none", borderRadius: 0 }}>
           <table className="admin-table lexp-table">
@@ -102,116 +74,99 @@ export default function ExpiredPage() {
               <tr>
                 {reorderMode && <th className="lexp-move-th"></th>}
                 <th className="lexp-product-th">Product</th>
-                <th className="lexp-input-th">Input (g)</th>
+                <th className="lexp-input-th">Weight (g)</th>
                 <th className="lexp-ctn-th">Container</th>
-                <th>Material</th>
-                <th className="lexp-rate-th">Rate</th>
-                <th className="lexp-result-th">Result (g)</th>
+                <th className="lexp-net-th">Net Weight (g)</th>
               </tr>
             </thead>
             <tbody>
               {products.map((product) => {
-                const isIas = product.loss_role === "input_and_summary";
-                const comps = isIas
-                  ? [{ source_item_id: product.id, rate: product.loss_rate ?? 0 }]
-                  : product.loss_components ?? [];
-                const rs = Math.max(comps.length, 1);
                 const gross = getGross(product.id);
                 const containerId = getContainerId(product.id);
                 const tare = getTare(containerId);
                 const net = gross != null ? gross - tare : null;
-
-                const inputCell = (
-                  <td rowSpan={rs} className="lexp-input-cell">
-                    <NumericInput
-                      value={gross}
-                      onChange={(v) => setEntry(product.id, containerId || null, v)}
-                    />
-                    {gross != null && (
-                      <div className="lexp-net">{gross} − {tare} = {net} g</div>
-                    )}
-                  </td>
-                );
-
-                const ctnCell = (
-                  <td rowSpan={rs} className="lexp-ctn-cell">
-                    <select
-                      className="lexp-ctn-select"
-                      value={containerId}
-                      onChange={(e) => setEntry(product.id, e.target.value || null, gross)}
-                    >
-                      <option value="">— none —</option>
-                      {containers.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.tare_g}g)</option>
-                      ))}
-                    </select>
-                  </td>
-                );
-
-                if (comps.length === 0) {
-                  return (
-                    <tr key={product.id} className="lexp-group-start">
-                      {reorderMode && (
-                        <td className="reorder-cell lexp-move-cell">
-                          <div className="reorder-btns">
-                            <ReorderButtons item={product} items={products} sortField="sort_order" />
-                          </div>
-                        </td>
-                      )}
-                      <td className="lexp-product-cell">{product.name}</td>
-                      {inputCell}
-                      {ctnCell}
-                      <td colSpan={3} style={{ color: "var(--text-secondary)", fontSize: 12 }}>—</td>
-                    </tr>
-                  );
-                }
-
-                return comps.map((comp, ci) => {
-                  const matItem = allItems.find((i) => i.id === comp.source_item_id);
-                  const result = net != null ? net * comp.rate : null;
-                  return (
-                    <tr key={`${product.id}-${ci}`} className={ci === 0 ? "lexp-group-start" : "lexp-group-cont"}>
-                      {ci === 0 && reorderMode && (
-                        <td rowSpan={rs} className="reorder-cell lexp-move-cell">
+                return (
+                  <tr key={product.id}>
+                    {reorderMode && (
+                      <td className="lexp-move-cell">
+                        <div className="reorder-btns" style={{ flexDirection: "row", padding: 0, gap: 3 }}>
                           <ReorderButtons item={product} items={products} sortField="sort_order" />
-                        </td>
-                      )}
-                      {ci === 0 && (
-                        <td rowSpan={rs} className="lexp-product-cell">{product.name}</td>
-                      )}
-                      {ci === 0 && inputCell}
-                      {ci === 0 && ctnCell}
-                      <td className="lexp-mat-cell">
-                        {isIas ? "—" : (matItem?.name ?? comp.source_item_id)}
+                        </div>
                       </td>
-                      <td className="lexp-rate-cell">{toFraction(comp.rate)}</td>
-                      <td className="lexp-result-cell">{result != null ? fmt(result) : "—"}</td>
-                    </tr>
-                  );
-                });
+                    )}
+                    <td className="lexp-product-cell">{product.name}</td>
+                    <td className="lexp-input-cell">
+                      <NumericInput
+                        value={gross}
+                        onChange={(v) => setEntry(product.id, containerId || null, v)}
+                      />
+                    </td>
+                    <td className="lexp-ctn-cell">
+                      <select
+                        className="lexp-ctn-select"
+                        value={containerId}
+                        onChange={(e) => setEntry(product.id, e.target.value || null, gross)}
+                      >
+                        <option value="">— none —</option>
+                        {containers.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name} ({c.tare_g}g)</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="lexp-net-cell">
+                      {net != null ? (
+                        <>
+                          <span className="lexp-net-val">{net}</span>
+                          <div className="lexp-net">{gross} − {tare} = {net} g</div>
+                        </>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                );
               })}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div className="category-label">Loss Summary</div>
+      {/* Loss Report table */}
+      <div className="category-label">Loss Report</div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div className="admin-table-wrap" style={{ border: "none", borderRadius: 0 }}>
-          <table className="admin-table">
+          <table className="admin-table lexp-table">
             <thead>
               <tr>
-                <th>Material</th>
-                <th className="lexp-result-th">Total (g)</th>
+                <th className="lexp-product-th">Material</th>
+                <th className="lexp-net-th">Net Weight (g)</th>
+                <th className="lexp-rate-th">Rate</th>
+                <th className="lexp-result-th">Result (g)</th>
               </tr>
             </thead>
             <tbody>
-              {summaryRows.map(({ id, item, total }) => (
-                <tr key={id}>
-                  <td>{item.name}</td>
-                  <td className="lexp-result-cell">{total > 0 ? fmt(total) : "—"}</td>
-                </tr>
-              ))}
+              {products.flatMap((product) => {
+                const isIas = product.loss_role === "input_and_summary";
+                const comps = isIas
+                  ? [{ source_item_id: product.id, rate: product.loss_rate ?? 0 }]
+                  : product.loss_components ?? [];
+                const net = getNet(product.id);
+
+                if (comps.length === 0) return [];
+
+                return comps.map((comp, ci) => {
+                  const matItem = allItems.find((i) => i.id === comp.source_item_id);
+                  const result = net != null ? net * comp.rate : null;
+                  return (
+                    <tr key={`${product.id}-${ci}`}>
+                      <td className="lexp-product-cell">
+                        {isIas ? product.name : (matItem?.name ?? comp.source_item_id)}
+                      </td>
+                      <td className="lexp-net-cell">{net != null ? net : "—"}</td>
+                      <td className="lexp-rate-cell">{toFraction(comp.rate)}</td>
+                      <td className="lexp-result-cell">{result != null ? fmt(result) : "—"}</td>
+                    </tr>
+                  );
+                });
+              })}
             </tbody>
           </table>
         </div>
