@@ -216,7 +216,7 @@ export default function AdminItemsPage() {
                 <tbody>
                   {categoryItems.map((item, itemIdx) => (
                     <tr key={item.id}>
-                      <td style={{ padding: "4px 6px" }}>
+                      <td style={{ padding: "4px 6px", textAlign: "center", verticalAlign: "middle" }}>
                         <div className="reorder-pair">
                           <button disabled={itemIdx === 0} onPointerDown={(e) => { e.preventDefault(); moveItem(category, item.id, -1); }}>↑</button>
                           <button disabled={itemIdx === categoryItems.length - 1} onPointerDown={(e) => { e.preventDefault(); moveItem(category, item.id, 1); }}>↓</button>
