@@ -4,7 +4,19 @@ import { useLoadDate } from "@/components/StageHooks";
 import { useCountingStore } from "@/store/useCountingStore";
 import { useItemsStore } from "@/store/useItemsStore";
 import NumericInput from "@/components/NumericInput";
-import ReorderButtons from "@/components/ReorderButtons";
+import type { Item } from "@/lib/types";
+
+function ReorderPair({ item, items }: { item: Item; items: Item[] }) {
+  const moveItem = useItemsStore((s) => s.moveItem);
+  const peers = items.filter((i) => i.category === item.category).sort((a, b) => a.sort_order - b.sort_order);
+  const idx = peers.findIndex((i) => i.id === item.id);
+  return (
+    <div className="reorder-pair">
+      <button disabled={idx === 0} onPointerDown={(e) => { e.preventDefault(); moveItem(item.id, -1, "sort_order"); }}>↑</button>
+      <button disabled={idx === peers.length - 1} onPointerDown={(e) => { e.preventDefault(); moveItem(item.id, 1, "sort_order"); }}>↓</button>
+    </div>
+  );
+}
 
 function toFraction(n: number): string {
   if (n === 0) return "0";
@@ -88,9 +100,7 @@ export default function ExpiredPage() {
                   <tr key={product.id}>
                     {reorderMode && (
                       <td className="lexp-move-cell">
-                        <div className="reorder-btns" style={{ flexDirection: "row", padding: 0, gap: 3 }}>
-                          <ReorderButtons item={product} items={products} sortField="sort_order" />
-                        </div>
+                        <ReorderPair item={product} items={products} />
                       </td>
                     )}
                     <td className="lexp-product-cell">{product.name}</td>

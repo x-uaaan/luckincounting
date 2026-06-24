@@ -79,6 +79,31 @@ export default function AdminItemsPage() {
   const deleteItem = useItemsStore((s) => s.deleteItem);
   const addItem = useItemsStore((s) => s.addItem);
 
+  function moveItem(category: string, id: string, dir: number) {
+    const catItems = items.filter(i => i.category === category).sort((a, b) => a.sort_order - b.sort_order);
+    const idx = catItems.findIndex(i => i.id === id);
+    const j = idx + dir;
+    if (j < 0 || j >= catItems.length) return;
+    const a = catItems[idx], b = catItems[j];
+    updateItem(a.id, { sort_order: b.sort_order });
+    updateItem(b.id, { sort_order: a.sort_order });
+  }
+
+  function moveCategory(catName: string, dir: number) {
+    const catIdx = categories.indexOf(catName);
+    const j = catIdx + dir;
+    if (j < 0 || j >= categories.length) return;
+    const catA = categories[catIdx];
+    const catB = categories[j];
+    const itemsA = items.filter(i => i.category === catA).sort((a, b) => a.sort_order - b.sort_order);
+    const itemsB = items.filter(i => i.category === catB).sort((a, b) => a.sort_order - b.sort_order);
+    const allOrders = [...itemsA, ...itemsB].map(i => i.sort_order).sort((a, b) => a - b);
+    const upper = dir > 0 ? itemsB : itemsA;
+    const lower = dir > 0 ? itemsA : itemsB;
+    upper.forEach((item, i) => updateItem(item.id, { sort_order: allOrders[i] }));
+    lower.forEach((item, i) => updateItem(item.id, { sort_order: allOrders[upper.length + i] }));
+  }
+
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [newItemDrafts, setNewItemDrafts] = useState<
     Record<string, { name: string; unit: string; appears_in: Stage[] }>
@@ -158,7 +183,7 @@ export default function AdminItemsPage() {
       </p>
 
 
-      {categories.map((category) => {
+      {categories.map((category, catIdx) => {
         const categoryItems = items
           .filter((i) => i.category === category)
           .sort((a, b) => a.sort_order - b.sort_order);
@@ -169,12 +194,17 @@ export default function AdminItemsPage() {
           <div key={category} className="card">
             <div className="card-head">
               <div className="title">{category}</div>
+              <div className="reorder-pair">
+                <button disabled={catIdx === 0} onPointerDown={(e) => { e.preventDefault(); moveCategory(category, -1); }}>↑</button>
+                <button disabled={catIdx === categories.length - 1} onPointerDown={(e) => { e.preventDefault(); moveCategory(category, 1); }}>↓</button>
+              </div>
             </div>
 
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
                   <tr>
+                    <th style={{ width: 68 }}></th>
                     <th>Name</th>
                     <th>Unit</th>
                     {columns.map((col) => (
@@ -184,8 +214,14 @@ export default function AdminItemsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {categoryItems.map((item) => (
+                  {categoryItems.map((item, itemIdx) => (
                     <tr key={item.id}>
+                      <td style={{ padding: "4px 6px" }}>
+                        <div className="reorder-pair">
+                          <button disabled={itemIdx === 0} onPointerDown={(e) => { e.preventDefault(); moveItem(category, item.id, -1); }}>↑</button>
+                          <button disabled={itemIdx === categoryItems.length - 1} onPointerDown={(e) => { e.preventDefault(); moveItem(category, item.id, 1); }}>↓</button>
+                        </div>
+                      </td>
                       <td>
                         <input
                           className="name-input"

@@ -811,10 +811,13 @@ body {
 .app-dark .loss-move-th { width: 44px !important; }
 .app-dark .loss-action-th { width: 52px !important; }
 .app-dark .loss-move-cell { border-right: 1px solid #2e3650; vertical-align: middle; padding: 4px !important; width: 44px; text-align: center; }
-/* reorder-btns inside loss table: column layout */
-.app-dark .loss-rate-table .reorder-btns { flex-direction: column !important; padding: 0 !important; gap: 3px; justify-content: center; }
+/* reorder-pair: presentable horizontal segmented button pair for tables */
+.app-dark .reorder-pair { display: inline-flex; border-radius: 7px; overflow: hidden; border: 1px solid #2e3650; }
+.app-dark .reorder-pair button { height: 28px; width: 30px; background: #1a2035; border: none; color: #94a3b8; font-size: 13px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; line-height: 1; }
+.app-dark .reorder-pair button:not(:last-child) { border-right: 1px solid #2e3650; }
+.app-dark .reorder-pair button:disabled { opacity: 0.22; cursor: default; }
+.app-dark .reorder-pair button:active:not(:disabled) { background: #2a3047; }
 .app-dark .loss-rate-warn { display: inline-block; margin-left: 6px; color: #f59e0b; font-size: 13px; vertical-align: middle; cursor: default; }
-.app-dark .loss-rate-table .reorder-arrow { height: 26px; min-width: 28px; flex: none; }
 .app-dark .loss-move-btns {
   display: flex;
   flex-direction: column;

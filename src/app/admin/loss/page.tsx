@@ -194,15 +194,13 @@ export default function AdminLossPage() {
                 const rateWarn = rateSum > 1 + 1e-6;
 
                 const moveCell = (
-                  <td rowSpan={rs} className="reorder-cell loss-move-cell">
-                    <div className="reorder-btns" style={{ flexDirection: "column", padding: 0, gap: 3 }}>
+                  <td rowSpan={rs} className="loss-move-cell">
+                    <div className="reorder-pair">
                       <button
-                        className="reorder-arrow"
                         disabled={idx === 0}
                         onPointerDown={(e) => { e.preventDefault(); move(item.id, -1); }}
                       >↑</button>
                       <button
-                        className="reorder-arrow"
                         disabled={idx === allExpired.length - 1}
                         onPointerDown={(e) => { e.preventDefault(); move(item.id, 1); }}
                       >↓</button>
