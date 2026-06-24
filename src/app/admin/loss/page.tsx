@@ -42,7 +42,7 @@ export default function AdminLossPage() {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const allExpired = items
-    .filter((i) => i.appears_in.includes("expired"))
+    .filter((i) => i.appears_in.includes("expired") && i.loss_role === "input")
     .sort((a, b) => a.sort_order - b.sort_order);
 
   function move(id: string, dir: number) {

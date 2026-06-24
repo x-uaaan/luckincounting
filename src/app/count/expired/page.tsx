@@ -129,7 +129,7 @@ export default function ExpiredPage() {
         </div>
       </div>
 
-      {/* Loss Report table */}
+      {/* Loss Report table — aggregated by material */}
       <div className="category-label">Loss Report</div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div className="admin-table-wrap" style={{ border: "none", borderRadius: 0 }}>
@@ -137,36 +137,34 @@ export default function ExpiredPage() {
             <thead>
               <tr>
                 <th className="lexp-product-th">Material</th>
-                <th className="lexp-net-th">Net Weight (g)</th>
-                <th className="lexp-rate-th">Rate</th>
                 <th className="lexp-result-th">Result (g)</th>
               </tr>
             </thead>
             <tbody>
-              {products.flatMap((product) => {
-                const isIas = product.loss_role === "input_and_summary";
-                const comps = isIas
-                  ? [{ source_item_id: product.id, rate: product.loss_rate ?? 0 }]
-                  : product.loss_components ?? [];
-                const net = getNet(product.id);
-
-                if (comps.length === 0) return [];
-
-                return comps.map((comp, ci) => {
-                  const matItem = allItems.find((i) => i.id === comp.source_item_id);
-                  const result = net != null ? net * comp.rate : null;
-                  return (
-                    <tr key={`${product.id}-${ci}`}>
-                      <td className="lexp-product-cell">
-                        {isIas ? product.name : (matItem?.name ?? comp.source_item_id)}
-                      </td>
-                      <td className="lexp-net-cell">{net != null ? net : "—"}</td>
-                      <td className="lexp-rate-cell">{toFraction(comp.rate)}</td>
-                      <td className="lexp-result-cell">{result != null ? fmt(result) : "—"}</td>
-                    </tr>
-                  );
-                });
-              })}
+              {(() => {
+                const totals = new Map<string, { name: string; total: number }>();
+                for (const product of products) {
+                  const isIas = product.loss_role === "input_and_summary";
+                  const comps = isIas
+                    ? [{ source_item_id: product.id, rate: product.loss_rate ?? 0 }]
+                    : product.loss_components ?? [];
+                  const net = getNet(product.id);
+                  for (const comp of comps) {
+                    if (!comp.source_item_id) continue;
+                    const matItem = allItems.find((i) => i.id === comp.source_item_id);
+                    const name = isIas ? product.name : (matItem?.name ?? comp.source_item_id);
+                    const result = net != null ? net * comp.rate : 0;
+                    const prev = totals.get(comp.source_item_id);
+                    totals.set(comp.source_item_id, { name, total: (prev?.total ?? 0) + result });
+                  }
+                }
+                return [...totals.entries()].map(([id, { name, total }]) => (
+                  <tr key={id}>
+                    <td className="lexp-product-cell">{name}</td>
+                    <td className="lexp-result-cell">{total > 0 ? fmt(total) : "—"}</td>
+                  </tr>
+                ));
+              })()}
             </tbody>
           </table>
         </div>
