@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useItemsStore } from "@/store/useItemsStore";
+import { useCountingStore } from "@/store/useCountingStore";
 
 const STAGES = [
   { slug: "back", label: "Back" },
@@ -19,12 +20,16 @@ export default function Topbar() {
   const [adminOpen, setAdminOpen] = useState(false);
   const reorderMode = useItemsStore((s) => s.reorderMode);
   const setReorderMode = useItemsStore((s) => s.setReorderMode);
+  const clearStage = useCountingStore((s) => s.clearStage);
 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clickCount = useRef(0);
 
   const slug = pathname?.split("/").pop() ?? "";
   const isCountPage = COUNT_SLUGS.has(slug);
+  const CLEARABLE_SLUGS = new Set(["back", "expired", "closing"]);
+  const isClearable = CLEARABLE_SLUGS.has(slug);
+  const clearableStage = slug === "expired" ? "expired" : (slug as "back" | "closing");
 
   function handleAdminClick() {
     clickCount.current += 1;
@@ -70,9 +75,16 @@ export default function Topbar() {
             Done
           </button>
         ) : (
-          <button className="admin-btn" onClick={handleAdminClick}>
-            Admin
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            {isClearable && (
+              <button className="admin-btn" onClick={() => clearStage(clearableStage)}>
+                Clear
+              </button>
+            )}
+            <button className="admin-btn" onClick={handleAdminClick}>
+              Admin
+            </button>
+          </div>
         )}
       </div>
 

@@ -191,7 +191,7 @@ export default function AdminLossPage() {
                 const isLossOnly = item.appears_in.every((s) => s === "expired");
                 const rs = Math.max(comps.length, 1);
                 const rateSum = comps.reduce((s, c) => s + c.rate, 0);
-                const rateWarn = comps.length > 1 && rateSum > 1 + 1e-6;
+                const rateWarn = rateSum > 1 + 1e-6;
 
                 const moveCell = (
                   <td rowSpan={rs} className="reorder-cell loss-move-cell">
