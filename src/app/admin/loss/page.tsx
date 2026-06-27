@@ -34,6 +34,8 @@ function parseFraction(s: string): number | null {
 export default function AdminLossPage() {
   const items = useItemsStore((s) => s.items);
   const updateItem = useItemsStore((s) => s.updateItem);
+  const containers = useItemsStore((s) => s.containers);
+  const sortedContainers = [...containers].sort((a, b) => a.sort_order - b.sort_order);
   const addItem = useItemsStore((s) => s.addItem);
   const deleteItem = useItemsStore((s) => s.deleteItem);
 
@@ -179,6 +181,7 @@ export default function AdminLossPage() {
               <tr>
                 <th className="loss-move-th"></th>
                 <th>Product</th>
+                <th>Default container</th>
                 <th>Material</th>
                 <th>Rate</th>
                 <th className="loss-action-th"></th>
@@ -223,11 +226,27 @@ export default function AdminLossPage() {
                   </td>
                 );
 
+                const containerCell = (
+                  <td rowSpan={rs} className="loss-container-cell">
+                    <select
+                      className="loss-container-select"
+                      value={item.default_container_id ?? ""}
+                      onChange={(e) => updateItem(item.id, { default_container_id: e.target.value || null })}
+                    >
+                      <option value="">— none —</option>
+                      {sortedContainers.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                );
+
                 if (comps.length === 0) {
                   return (
                     <tr key={item.id} className="loss-product-group-start">
                       {moveCell}
                       {nameCell}
+                      {containerCell}
                       <td className="loss-material-cell">
                         <button className="loss-add-comp" onClick={() => addComp(item)}>+ add material</button>
                       </td>
@@ -245,6 +264,7 @@ export default function AdminLossPage() {
                   <tr key={`${item.id}-${ci}`} className={ci === 0 ? "loss-product-group-start" : ""}>
                     {ci === 0 && moveCell}
                     {ci === 0 && nameCell}
+                    {ci === 0 && containerCell}
                     <td className="loss-material-cell">
                       {matSelect(item, comp, ci)}
                     </td>

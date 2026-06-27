@@ -73,7 +73,7 @@ interface CountingState {
   setFront: (itemId: string, partial: Pick<FrontEntry, "box_count">) => void;
   setMaterialLoss: (
     itemId: string,
-    partial: Pick<MaterialLossEntry, "container_id" | "gross_weight" | "rate_value">
+    partial: Pick<MaterialLossEntry, "container_id" | "tare_override" | "gross_weight" | "rate_value">
   ) => void;
   setClosing: (
     itemId: string,
@@ -178,6 +178,7 @@ export const useCountingStore = create<CountingState>((set, get) => ({
     for (const dep of dependents) {
       const depPartial = record.material_loss[dep.id] ?? {
         container_id: null,
+        tare_override: null,
         gross_weight: null,
         rate_value: null,
       };

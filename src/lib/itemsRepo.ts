@@ -20,9 +20,15 @@ export async function fetchItems(): Promise<Item[] | null> {
 export async function fetchContainers(): Promise<Container[] | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = createClient();
-  const { data, error } = await supabase.from("containers").select("*").order("name");
+  const { data, error } = await supabase.from("containers").select("*").order("sort_order").order("name");
   if (error || !data) return null;
-  return data as unknown as Container[];
+  return (data as unknown as Container[]).map((c, i): Container => ({
+    id: c.id,
+    name: c.name,
+    tare_g: c.tare_g,
+    sort_order: c.sort_order ?? (i + 1) * 10,
+    tare_variants: c.tare_variants ?? null,
+  }));
 }
 
 export async function upsertItem(item: Item): Promise<void> {

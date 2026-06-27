@@ -70,7 +70,7 @@ export function calcFront(item: Item, entry: Pick<FrontEntry, "box_count">): Fro
 // --- Stage 3: Material Expired — Loss (countingflow.md §A.6/§A.2) ---
 export function calcMaterialLoss(
   item: Item,
-  entry: Pick<MaterialLossEntry, "container_id" | "gross_weight" | "rate_value">,
+  entry: Pick<MaterialLossEntry, "container_id" | "tare_override" | "gross_weight" | "rate_value">,
   opts: {
     containers: Container[];
     // map of every item id -> its current total_volume (own weighed input, before
@@ -82,8 +82,9 @@ export function calcMaterialLoss(
     ? opts.containers.find((c) => c.id === entry.container_id) ?? null
     : null;
 
+  const effectiveTare = entry.tare_override ?? container?.tare_g ?? 0;
   const total_volume =
-    entry.gross_weight != null ? entry.gross_weight - (container?.tare_g ?? 0) : null;
+    entry.gross_weight != null ? entry.gross_weight - effectiveTare : null;
 
   let result: number | null = null;
 
@@ -110,6 +111,7 @@ export function calcMaterialLoss(
 
   return {
     container_id: entry.container_id ?? null,
+    tare_override: entry.tare_override ?? null,
     gross_weight: entry.gross_weight ?? null,
     total_volume,
     rate_value: entry.rate_value ?? null,
@@ -205,8 +207,9 @@ export function calcClosing(
     // Unopened boxes come in stacks of 4; loose_pcs is the remainder.
     const totalPcs = (entry.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (entry.unopened_loose_pcs ?? 0);
     non_coffee = totalPcs;
-    // unopened + extra loose boxes (in g), plus cream still in canisters
-    loose = (non_coffee + (entry.loose_extra ?? 0)) * (item.bag_size_g ?? 0) + (whippingCream?.total_whipping_cream ?? 0);
+    // total g = unopened boxes*1000 + opened box gross weight + cream in canisters
+    // loose_sum = loose / 1000 = boxes (since closing_input_type="weight", bag_size_g=1000)
+    loose = non_coffee * (item.bag_size_g ?? 0) + (entry.gross_weight ?? 0) + (whippingCream?.total_whipping_cream ?? 0);
   } else if (item.closing_inventory_formula === "stack_box") {
     // (§A.10) Raw Material: stacked boxes + loose remainder pcs = whole-box count,
     // plus any partial loose weight (g) converted via bag_size_g.

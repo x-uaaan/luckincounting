@@ -61,18 +61,30 @@ export default function ExpiredPage() {
       ?? "";
   }
 
-  function getTare(containerId: string): number {
+  const sortedContainers = [...containers].sort((a, b) => a.sort_order - b.sort_order);
+
+  function getTare(containerId: string, tareOverride: number | null): number {
+    if (tareOverride != null) return tareOverride;
     return containers.find((c) => c.id === containerId)?.tare_g ?? 0;
+  }
+
+  function getTareOverride(id: string): number | null {
+    return activeRecord.material_loss[id]?.tare_override ?? null;
   }
 
   function getNet(id: string): number | null {
     const gross = getGross(id);
     if (gross == null) return null;
-    return gross - getTare(getContainerId(id));
+    return gross - getTare(getContainerId(id), getTareOverride(id));
   }
 
-  function setEntry(id: string, containerId: string | null, gross: number | null) {
-    setMaterialLoss(id, { container_id: containerId || null, gross_weight: gross, rate_value: null });
+  function setEntry(id: string, containerId: string | null, gross: number | null, tareOverride?: number | null) {
+    setMaterialLoss(id, {
+      container_id: containerId || null,
+      tare_override: tareOverride !== undefined ? tareOverride : (activeRecord.material_loss[id]?.tare_override ?? null),
+      gross_weight: gross,
+      rate_value: null,
+    });
   }
 
   return (
@@ -94,8 +106,11 @@ export default function ExpiredPage() {
               {products.map((product) => {
                 const gross = getGross(product.id);
                 const containerId = getContainerId(product.id);
-                const tare = getTare(containerId);
+                const tareOverride = getTareOverride(product.id);
+                const selectedContainer = containers.find((c) => c.id === containerId);
+                const tare = getTare(containerId, tareOverride);
                 const net = gross != null ? gross - tare : null;
+                const hasVariants = (selectedContainer?.tare_variants?.length ?? 0) > 0;
                 return (
                   <tr key={product.id}>
                     {reorderMode && (
@@ -114,13 +129,27 @@ export default function ExpiredPage() {
                       <select
                         className="lexp-ctn-select"
                         value={containerId}
-                        onChange={(e) => setEntry(product.id, e.target.value || null, gross)}
+                        onChange={(e) => setEntry(product.id, e.target.value || null, gross, null)}
                       >
                         <option value="">— none —</option>
-                        {containers.map((c) => (
+                        {sortedContainers.map((c) => (
                           <option key={c.id} value={c.id}>{c.name} ({c.tare_g}g)</option>
                         ))}
                       </select>
+                      {hasVariants && (
+                        <select
+                          className="lexp-ctn-select lexp-variant-select"
+                          value={tareOverride ?? ""}
+                          onChange={(e) =>
+                            setEntry(product.id, containerId || null, gross, e.target.value === "" ? null : Number(e.target.value))
+                          }
+                        >
+                          <option value="">Base ({selectedContainer?.tare_g}g)</option>
+                          {selectedContainer!.tare_variants!.map((v, i) => (
+                            <option key={i} value={v.tare_g}>{v.label} ({v.tare_g}g)</option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="lexp-net-cell">
                       {net != null ? (

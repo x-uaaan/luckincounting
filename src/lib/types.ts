@@ -91,10 +91,17 @@ export interface Item {
 
 // ---- Containers (countingflow.md §A.6) ----
 
+export interface ContainerVariant {
+  label: string;  // e.g. "No cover", "With cover"
+  tare_g: number;
+}
+
 export interface Container {
   id: string;
   name: string;
   tare_g: number;
+  sort_order: number;
+  tare_variants: ContainerVariant[] | null; // null = no variants, just base tare_g
 }
 
 // ---- Whipping cream variant calculator (countingflow.md §A.2 / appflow.md §A.4) ----
@@ -131,11 +138,12 @@ export interface FrontEntry {
 }
 
 export interface MaterialLossEntry {
-  container_id: string | null;   // (NEW, §A.6) selected container preset
-  gross_weight: number | null;   // (NEW, §A.6) container + leftover premix, as weighed
-  total_volume: number | null;   // computed = gross_weight - container.tare_g (or = gross_weight if no container)
-  rate_value: number | null;     // context-dependent: subtraction ml / addend value
-  result: number | null;         // computed
+  container_id: string | null;    // (NEW, §A.6) selected container preset
+  tare_override: number | null;   // selected variant tare (null = use container.tare_g)
+  gross_weight: number | null;    // (NEW, §A.6) container + leftover premix, as weighed
+  total_volume: number | null;    // computed = gross_weight - effective_tare
+  rate_value: number | null;      // context-dependent: subtraction ml / addend value
+  result: number | null;          // computed
 }
 
 export interface ClosingEntry {
