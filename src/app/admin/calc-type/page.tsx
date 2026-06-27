@@ -1,248 +1,267 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 import AdminHeader from "@/components/AdminHeader";
 import { useItemsStore } from "@/store/useItemsStore";
 import type { Item } from "@/lib/types";
 
-// Fields shown per item row
-const BACK_FORMULAS = [
-  { value: "",          label: "Default (bags × pcs)" },
-  { value: "stack_box", label: "Stack × size + loose" },
-  { value: "bag_count", label: "Bag count (→ weight)" },
-  { value: "hidden",    label: "Hidden (no loose row)" },
-] as const;
+const BACK_FORMULAS: { value: string; label: string }[] = [
+  { value: "",           label: "bags × pcs/bag" },
+  { value: "stack_box", label: "stacks × size + loose" },
+  { value: "bag_count", label: "bag count × bag_size_g" },
+  { value: "hidden",    label: "hidden (no loose row)" },
+];
 
-const CLOSING_FORMULAS = [
-  { value: "",                    label: "Default (enter directly)" },
-  { value: "non_coffee",          label: "non_coffee (bag_size − used)" },
-  { value: "under_cabinet",       label: "under_cabinet (bag_size − stored)" },
-  { value: "container_direct",    label: "container_direct (gross − tare)" },
-  { value: "container_plus_loose",label: "container_plus_loose (loose + container)" },
-  { value: "stack_box",           label: "stack_box (stacks × size + loose)" },
-  { value: "whipping_cream",      label: "whipping_cream (3-row calc)" },
-] as const;
+const CLOSING_FORMULAS: { value: string; label: string }[] = [
+  { value: "",                     label: "enter directly" },
+  { value: "non_coffee",           label: "bag_size − used (non_coffee)" },
+  { value: "under_cabinet",        label: "bag_size − stored (under_cabinet)" },
+  { value: "container_direct",     label: "gross − tare" },
+  { value: "container_plus_loose", label: "loose + (gross−tare)/bag_size" },
+  { value: "stack_box",            label: "stacks × size + loose" },
+  { value: "whipping_cream",       label: "whipping cream (3-row)" },
+];
 
-const CLOSING_INPUT_TYPES = [
-  { value: "count",   label: "count (pcs)" },
-  { value: "weight",  label: "weight (g → boxes)" },
-  { value: "sleeves", label: "sleeves (× pcs/bag)" },
-] as const;
+const CLOSING_INPUT: { value: string; label: string }[] = [
+  { value: "count",   label: "count" },
+  { value: "weight",  label: "weight ÷ bag_size_g" },
+  { value: "sleeves", label: "sleeves × pcs/bag" },
+];
+
+const LOSS_FORMULAS: { value: string; label: string }[] = [
+  { value: "none",       label: "none" },
+  { value: "direct",     label: "direct (gross − tare)" },
+  { value: "multiply",   label: "net × rate" },
+  { value: "components", label: "components (multi-material)" },
+];
+
+function Sel({ value, options, onChange }: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <select className="ct-select" value={value} onChange={(e) => onChange(e.target.value)}>
+      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
+function NumIn({ value, onChange, placeholder = "—", width = 60 }: {
+  value: number | null; onChange: (v: number | null) => void; placeholder?: string; width?: number;
+}) {
+  return (
+    <input
+      className="ct-num"
+      style={{ width }}
+      inputMode="numeric"
+      value={value ?? ""}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+    />
+  );
+}
 
 export default function AdminCalcTypePage() {
   const items = useItemsStore((s) => s.items);
   const updateItem = useItemsStore((s) => s.updateItem);
 
-  const [expandedWcId, setExpandedWcId] = useState<string | null>(null);
-
-  const categories = Array.from(new Set(
-    items.filter(i => i.category !== "Loss").map(i => i.category)
-  )).sort((a, b) => {
-    const aMin = Math.min(...items.filter(i => i.category === a).map(i => i.sort_order));
-    const bMin = Math.min(...items.filter(i => i.category === b).map(i => i.sort_order));
-    return aMin - bMin;
-  });
-
-  function setField<K extends keyof Item>(id: string, field: K, val: Item[K]) {
-    updateItem(id, { [field]: val } as Partial<Item>);
+  function set<K extends keyof Item>(id: string, k: K, v: Item[K]) {
+    updateItem(id, { [k]: v } as Partial<Item>);
   }
+
+  const backItems = items
+    .filter((i) => i.appears_in.includes("back"))
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const matExpItems = items
+    .filter((i) => i.appears_in.includes("expired") && i.loss_role === "input")
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const closingItems = items
+    .filter((i) => i.appears_in.includes("closing"))
+    .sort((a, b) => (a.closing_sort_order ?? a.sort_order) - (b.closing_sort_order ?? b.sort_order));
 
   return (
     <div className="content">
       <AdminHeader title="Calc Type" />
       <p className="check">
-        Configure how each item is calculated in each counting stage.
-        All changes persist to Supabase and flow through immediately.
+        Configure how each item is calculated per stage.
+        Changes persist immediately. Edit stack size and whipping cream flavours here.
       </p>
 
-      {categories.map((cat) => {
-        const catItems = items
-          .filter(i => i.category === cat && i.category !== "Loss")
-          .sort((a, b) => a.sort_order - b.sort_order);
-        return (
-          <div key={cat} className="card ct-card">
-            <div className="card-head"><div className="title">{cat}</div></div>
-            <div className="admin-table-wrap">
-              <table className="admin-table ct-table">
-                <thead>
+      {/* ── BACK ── */}
+      <div className="category-label" style={{ marginTop: 0 }}>Back</div>
+      <div className="card" style={{ padding: 0 }}>
+        <div className="admin-table-wrap">
+          <table className="admin-table ct-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Formula</th>
+                <th>Stack size</th>
+                <th>Pcs/bag</th>
+                <th>Pcs/box</th>
+              </tr>
+            </thead>
+            <tbody>
+              {backItems.map((item) => (
+                <tr key={item.id}>
+                  <td className="ct-name-cell">{item.name}</td>
+                  <td>
+                    <Sel
+                      value={item.back_loose_formula ?? ""}
+                      options={BACK_FORMULAS}
+                      onChange={(v) => set(item.id, "back_loose_formula", (v || null) as Item["back_loose_formula"])}
+                    />
+                  </td>
+                  <td><NumIn value={item.unopened_stack_size} onChange={(v) => set(item.id, "unopened_stack_size", v)} /></td>
+                  <td><NumIn value={item.per_bag_pcs} onChange={(v) => set(item.id, "per_bag_pcs", v)} /></td>
+                  <td><NumIn value={item.per_box_pcs} onChange={(v) => set(item.id, "per_box_pcs", v)} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── MAT EXP ── */}
+      <div className="category-label">Mat Exp</div>
+      <div className="card" style={{ padding: 0 }}>
+        <div className="admin-table-wrap">
+          <table className="admin-table ct-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Loss formula</th>
+                <th>Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matExpItems.map((item) => (
+                <tr key={item.id}>
+                  <td className="ct-name-cell">{item.name}</td>
+                  <td>
+                    <Sel
+                      value={item.loss_formula}
+                      options={LOSS_FORMULAS}
+                      onChange={(v) => set(item.id, "loss_formula", v as Item["loss_formula"])}
+                    />
+                  </td>
+                  <td>
+                    <NumIn
+                      value={item.loss_rate}
+                      onChange={(v) => set(item.id, "loss_rate", v)}
+                      width={70}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── CLOSING ── */}
+      <div className="category-label">Closing</div>
+      <div className="card" style={{ padding: 0 }}>
+        <div className="admin-table-wrap">
+          <table className="admin-table ct-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Formula</th>
+                <th>Input type</th>
+                <th style={{ textAlign: "center" }}>Box row</th>
+                <th style={{ textAlign: "center" }}>Loose grid</th>
+                <th>Bag size (g)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {closingItems.map((item) => (
+                <React.Fragment key={item.id}>
                   <tr>
-                    <th>Item</th>
-                    <th>Back formula</th>
-                    <th>Stack size</th>
-                    <th>Closing formula</th>
-                    <th>Closing input</th>
-                    <th>Box row</th>
-                    <th>Loose grid</th>
+                    <td className="ct-name-cell">{item.name}</td>
+                    <td>
+                      <Sel
+                        value={item.closing_inventory_formula ?? ""}
+                        options={CLOSING_FORMULAS}
+                        onChange={(v) => set(item.id, "closing_inventory_formula", (v || null) as Item["closing_inventory_formula"])}
+                      />
+                    </td>
+                    <td>
+                      <Sel
+                        value={item.closing_input_type}
+                        options={CLOSING_INPUT}
+                        onChange={(v) => set(item.id, "closing_input_type", v as Item["closing_input_type"])}
+                      />
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={item.closing_box_row}
+                        onChange={(e) => set(item.id, "closing_box_row", e.target.checked)}
+                        style={{ accentColor: "var(--accent)", width: 15, height: 15, cursor: "pointer" }}
+                      />
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={item.loose_grid}
+                        onChange={(e) => set(item.id, "loose_grid", e.target.checked)}
+                        style={{ accentColor: "var(--accent)", width: 15, height: 15, cursor: "pointer" }}
+                      />
+                    </td>
+                    <td><NumIn value={item.bag_size_g} onChange={(v) => set(item.id, "bag_size_g", v)} width={70} /></td>
                   </tr>
-                </thead>
-                <tbody>
-                  {catItems.map((item) => (
-                    <>
-                      <tr key={item.id}>
-                        <td className="ct-name-cell">{item.name}</td>
 
-                        {/* Back formula */}
-                        <td>
-                          <select
-                            className="ct-select"
-                            value={item.back_loose_formula ?? ""}
-                            onChange={(e) =>
-                              setField(item.id, "back_loose_formula", (e.target.value || null) as Item["back_loose_formula"])
-                            }
-                          >
-                            {BACK_FORMULAS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                          </select>
-                        </td>
-
-                        {/* Stack size */}
-                        <td>
-                          <input
-                            className="ct-num"
-                            inputMode="numeric"
-                            value={item.unopened_stack_size ?? ""}
-                            placeholder="—"
-                            onChange={(e) =>
-                              setField(item.id, "unopened_stack_size", e.target.value === "" ? null : Number(e.target.value))
-                            }
-                          />
-                        </td>
-
-                        {/* Closing formula */}
-                        <td>
-                          <select
-                            className="ct-select"
-                            value={item.closing_inventory_formula ?? ""}
-                            onChange={(e) =>
-                              setField(item.id, "closing_inventory_formula", (e.target.value || null) as Item["closing_inventory_formula"])
-                            }
-                          >
-                            {CLOSING_FORMULAS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                          </select>
-                        </td>
-
-                        {/* Closing input type */}
-                        <td>
-                          <select
-                            className="ct-select"
-                            value={item.closing_input_type}
-                            onChange={(e) =>
-                              setField(item.id, "closing_input_type", e.target.value as Item["closing_input_type"])
-                            }
-                          >
-                            {CLOSING_INPUT_TYPES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                          </select>
-                        </td>
-
-                        {/* Box row toggle */}
-                        <td style={{ textAlign: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={item.closing_box_row}
-                            onChange={(e) => setField(item.id, "closing_box_row", e.target.checked)}
-                            style={{ accentColor: "var(--accent)", width: 15, height: 15, cursor: "pointer" }}
-                          />
-                        </td>
-
-                        {/* Loose grid toggle */}
-                        <td style={{ textAlign: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={item.loose_grid}
-                            onChange={(e) => setField(item.id, "loose_grid", e.target.checked)}
-                            style={{ accentColor: "var(--accent)", width: 15, height: 15, cursor: "pointer" }}
-                          />
-                        </td>
-                      </tr>
-
-                      {/* Whipping cream flavour presets sub-row */}
-                      {item.closing_inventory_formula === "whipping_cream" && (
-                        <tr key={`${item.id}_wc`} className="ct-wc-row">
-                          <td colSpan={7}>
-                            <div className="ct-wc-block">
-                              <button
-                                className="ct-wc-toggle"
-                                onClick={() => setExpandedWcId(expandedWcId === item.id ? null : item.id)}
-                              >
-                                {expandedWcId === item.id ? "▲" : "▼"} Flavour weight presets ({(item.wc_flavours ?? []).length} flavours)
-                              </button>
-                              {expandedWcId === item.id && (
-                                <div className="ct-wc-flavours">
-                                  <div className="ct-wc-header">
-                                    <span>Flavour name</span>
-                                    <span>Pumps</span>
-                                    <span>ml/pump</span>
-                                    <span>Syrup (g)</span>
-                                    <span></span>
-                                  </div>
-                                  {(item.wc_flavours ?? []).map((f, fi) => {
-                                    const syrup = f.pump_count * f.ml_per_pump;
-                                    return (
-                                      <div key={f.id} className="ct-wc-flavour-row">
-                                        <input
-                                          value={f.name}
-                                          placeholder="Name"
-                                          onChange={(e) => {
-                                            const wc_flavours = (item.wc_flavours ?? []).map((ff, i) =>
-                                              i === fi ? { ...ff, name: e.target.value } : ff
-                                            );
-                                            updateItem(item.id, { wc_flavours });
-                                          }}
-                                        />
-                                        <input
-                                          inputMode="numeric"
-                                          value={f.pump_count}
-                                          onChange={(e) => {
-                                            const wc_flavours = (item.wc_flavours ?? []).map((ff, i) =>
-                                              i === fi ? { ...ff, pump_count: Number(e.target.value) } : ff
-                                            );
-                                            updateItem(item.id, { wc_flavours });
-                                          }}
-                                        />
-                                        <input
-                                          inputMode="decimal"
-                                          value={f.ml_per_pump}
-                                          onChange={(e) => {
-                                            const wc_flavours = (item.wc_flavours ?? []).map((ff, i) =>
-                                              i === fi ? { ...ff, ml_per_pump: Number(e.target.value) } : ff
-                                            );
-                                            updateItem(item.id, { wc_flavours });
-                                          }}
-                                        />
-                                        <span className="ct-wc-syrup">{syrup} g</span>
-                                        <button
-                                          className="ct-wc-rm"
-                                          onClick={() => {
-                                            const wc_flavours = (item.wc_flavours ?? []).filter((_, i) => i !== fi);
-                                            updateItem(item.id, { wc_flavours: wc_flavours.length > 0 ? wc_flavours : null });
-                                          }}
-                                        >✕</button>
-                                      </div>
-                                    );
-                                  })}
-                                  <button
-                                    className="add-variant-btn"
-                                    onClick={() => {
-                                      const wc_flavours = [
-                                        ...(item.wc_flavours ?? []),
-                                        { id: `flavour_${Date.now()}`, name: "", pump_count: 0, ml_per_pump: 5 },
-                                      ];
-                                      updateItem(item.id, { wc_flavours });
-                                    }}
-                                  >+ Add flavour</button>
-                                </div>
-                              )}
+                  {/* Whipping cream flavour presets */}
+                  {item.closing_inventory_formula === "whipping_cream" && (
+                    <tr className="ct-wc-sub">
+                      <td />
+                      <td colSpan={5}>
+                        <div className="ct-wc-block">
+                          <div className="ct-wc-header">
+                            <span>Flavour name</span><span>Pumps</span><span>ml/pump</span><span>→ syrup (g)</span><span></span>
+                          </div>
+                          {(item.wc_flavours ?? []).map((f, fi) => (
+                            <div key={f.id} className="ct-wc-flavour-row">
+                              <input value={f.name} placeholder="Name"
+                                onChange={(e) => {
+                                  const wc_flavours = (item.wc_flavours ?? []).map((ff, i) => i === fi ? { ...ff, name: e.target.value } : ff);
+                                  updateItem(item.id, { wc_flavours });
+                                }} />
+                              <input inputMode="numeric" value={f.pump_count}
+                                onChange={(e) => {
+                                  const wc_flavours = (item.wc_flavours ?? []).map((ff, i) => i === fi ? { ...ff, pump_count: Number(e.target.value) } : ff);
+                                  updateItem(item.id, { wc_flavours });
+                                }} />
+                              <input inputMode="decimal" value={f.ml_per_pump}
+                                onChange={(e) => {
+                                  const wc_flavours = (item.wc_flavours ?? []).map((ff, i) => i === fi ? { ...ff, ml_per_pump: Number(e.target.value) } : ff);
+                                  updateItem(item.id, { wc_flavours });
+                                }} />
+                              <span className="ct-wc-syrup">{f.pump_count * f.ml_per_pump} g</span>
+                              <button className="ct-wc-rm" onClick={() => {
+                                const wc_flavours = (item.wc_flavours ?? []).filter((_, i) => i !== fi);
+                                updateItem(item.id, { wc_flavours: wc_flavours.length > 0 ? wc_flavours : null });
+                              }}>✕</button>
                             </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })}
+                          ))}
+                          <button className="add-variant-btn" style={{ marginTop: 4 }} onClick={() => {
+                            const wc_flavours = [...(item.wc_flavours ?? []), { id: `f_${Date.now()}`, name: "", pump_count: 0, ml_per_pump: 5 }];
+                            updateItem(item.id, { wc_flavours });
+                          }}>+ Add flavour</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
