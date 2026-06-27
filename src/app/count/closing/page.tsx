@@ -50,6 +50,7 @@ export default function ClosingPage() {
   const selfCheckWarnings = useCountingStore((s) => s.selfCheckWarnings);
   const allItems = useItemsStore((s) => s.items);
   const reorderMode = useItemsStore((s) => s.reorderMode);
+  const moveClosingCategory = useItemsStore((s) => s.moveClosingCategory);
   const containers = useItemsStore((s) => s.containers);
   const canisterTare = containers.find((c) => c.id === "canister")?.tare_g ?? 0;
 
@@ -69,6 +70,8 @@ export default function ClosingPage() {
 
   let currentCategory = "";
   const categories = Array.from(new Set(items.map((i) => i.category)));
+  const firstCategory = categories[0];
+  const lastCategory = categories[categories.length - 1];
 
   return (
     <>
@@ -142,6 +145,18 @@ export default function ClosingPage() {
             {showCategory && (
               <div className="category-label" id={categoryAnchorId(item.category)}>
                 {item.category}
+                {reorderMode && (
+                  <span className="cat-reorder">
+                    <button
+                      disabled={item.category === firstCategory}
+                      onClick={() => moveClosingCategory(item.category, -1)}
+                    >↑</button>
+                    <button
+                      disabled={item.category === lastCategory}
+                      onClick={() => moveClosingCategory(item.category, 1)}
+                    >↓</button>
+                  </span>
+                )}
               </div>
             )}
             <div className={`card ${reorderMode ? "card-reordering" : hasError ? "warn" : ""}`}>
@@ -292,9 +307,11 @@ export default function ClosingPage() {
 
               {item.closing_inventory_formula === "whipping_cream" && (() => {
                 const unopenedCount = (base.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (base.unopened_loose_pcs ?? 0);
-                const unopenedG = unopenedCount * (item.bag_size_g ?? 0);
+                const openedBoxes = base.gross_weight != null ? base.gross_weight / (item.bag_size_g ?? 1000) : null;
+                const canisterBoxes = totalCream != null ? totalCream / (item.bag_size_g ?? 1000) : null;
                 return (
                 <>
+                  {/* Unopened: stacks × 4 + loose boxes = total boxes */}
                   <div className="row">
                     <div className="w105">
                       <div className="name">Unopened</div>
@@ -313,7 +330,7 @@ export default function ClosingPage() {
                     </div>
                     <div className="op">+</div>
                     <div className="field w44">
-                      <div className="lbl">Loose pcs</div>
+                      <div className="lbl">Loose box</div>
                       <NumericInput
                         value={base.unopened_loose_pcs ?? null}
                         onChange={(v) => update({ unopened_loose_pcs: v })}
@@ -321,11 +338,36 @@ export default function ClosingPage() {
                     </div>
                     <div className="op">=</div>
                     <div className="field w44">
-                      <div className="lbl">pcs</div>
+                      <div className="lbl">box</div>
                       <input className="auto" disabled value={unopenedCount} />
                     </div>
                   </div>
 
+                  {/* Opened box: gross weight (g) → /1000 = boxes */}
+                  <div className="row">
+                    <div className="w105">
+                      <div className="name">Opened</div>
+                    </div>
+                    <div className="field w70">
+                      <div className="lbl">Weight (g)</div>
+                      <NumericInput
+                        value={base.gross_weight ?? null}
+                        onChange={(v) => update({ gross_weight: v })}
+                      />
+                    </div>
+                    <div className="op">/</div>
+                    <div className="field w44">
+                      <div className="lbl">g/box</div>
+                      <div className="const">{item.bag_size_g ?? 1000}</div>
+                    </div>
+                    <div className="op">=</div>
+                    <div className="field w70">
+                      <div className="lbl">box</div>
+                      <input className="auto" disabled value={openedBoxes != null ? openedBoxes.toFixed(3) : ""} />
+                    </div>
+                  </div>
+
+                  {/* In-canister: gross − syrup − canister tare = cream g */}
                   {whippingCream.variants.map((v, idx) => {
                     const flavourWeight = v.pump_count * v.ml_per_pump;
                     const cream = v.total_weight != null ? v.total_weight - flavourWeight - canisterTare : null;
@@ -351,7 +393,7 @@ export default function ClosingPage() {
                             </select>
                           </div>
                           <div className="field w70">
-                            <div className="lbl">Gross wt (g)</div>
+                            <div className="lbl">Gross (g)</div>
                             <NumericInput
                               value={v.total_weight ?? null}
                               onChange={(value) => {
@@ -364,7 +406,7 @@ export default function ClosingPage() {
                           </div>
                           <div className="op">−</div>
                           <div className="field w44">
-                            <div className="lbl">Flavour</div>
+                            <div className="lbl">Syrup</div>
                             <div className="const">{flavourWeight}</div>
                           </div>
                           <div className="op">−</div>
@@ -387,24 +429,6 @@ export default function ClosingPage() {
                     );
                   })}
 
-                  <div className="row">
-                    <div className="w105">
-                      <div className="name">Loose</div>
-                    </div>
-                    <div className="field w70">
-                      <div className="lbl">Loose (box)</div>
-                      <NumericInput
-                        value={base.loose_extra ?? null}
-                        onChange={(v) => update({ loose_extra: v })}
-                      />
-                    </div>
-                    <div className="op">=</div>
-                    <div className="field w70">
-                      <div className="lbl">box</div>
-                      <input className="auto" disabled value={base.loose_extra ?? ""} />
-                    </div>
-                  </div>
-
                   <button
                     className="add-btn"
                     disabled={whippingCream.variants.length >= MAX_CANISTERS}
@@ -421,10 +445,7 @@ export default function ClosingPage() {
                   </button>
 
                   <div className="check">
-                    Total canister cream: {totalCream ?? 0} g
-                  </div>
-                  <div className="check">
-                    {totalCream ?? 0} + {unopenedCount} × {item.bag_size_g} ({unopenedG} g) = {entry?.loose ?? 0} g
+                    {unopenedCount} + {openedBoxes != null ? openedBoxes.toFixed(3) : 0} + {canisterBoxes != null ? canisterBoxes.toFixed(3) : 0} = {entry?.loose_sum != null ? entry.loose_sum.toFixed(3) : 0} box
                   </div>
                 </>
                 );
