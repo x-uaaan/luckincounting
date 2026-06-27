@@ -78,6 +78,29 @@ export default function ExpiredPage() {
     return gross - getTare(getContainerId(id), getTareOverride(id));
   }
 
+  // Flat select value: "containerId" for base, "containerId::vi" for variant index vi
+  function getSelectValue(id: string): string {
+    const cid = getContainerId(id);
+    if (!cid) return "";
+    const override = getTareOverride(id);
+    if (override == null) return cid;
+    const c = containers.find((c) => c.id === cid);
+    const vi = c?.tare_variants?.findIndex((v) => v.tare_g === override);
+    return vi != null && vi >= 0 ? `${cid}::${vi}` : cid;
+  }
+
+  function setEntryFromSelect(id: string, val: string, gross: number | null) {
+    if (!val) {
+      setMaterialLoss(id, { container_id: null, tare_override: null, gross_weight: gross, rate_value: null });
+      return;
+    }
+    const [cid, viStr] = val.split("::");
+    const vi = viStr != null ? parseInt(viStr) : -1;
+    const c = containers.find((c) => c.id === cid);
+    const tare_override = vi >= 0 ? (c?.tare_variants?.[vi]?.tare_g ?? null) : null;
+    setMaterialLoss(id, { container_id: cid, tare_override, gross_weight: gross, rate_value: null });
+  }
+
   function setEntry(id: string, containerId: string | null, gross: number | null, tareOverride?: number | null) {
     setMaterialLoss(id, {
       container_id: containerId || null,
@@ -107,10 +130,9 @@ export default function ExpiredPage() {
                 const gross = getGross(product.id);
                 const containerId = getContainerId(product.id);
                 const tareOverride = getTareOverride(product.id);
-                const selectedContainer = containers.find((c) => c.id === containerId);
                 const tare = getTare(containerId, tareOverride);
                 const net = gross != null ? gross - tare : null;
-                const hasVariants = (selectedContainer?.tare_variants?.length ?? 0) > 0;
+                const selectVal = getSelectValue(product.id);
                 return (
                   <tr key={product.id}>
                     {reorderMode && (
@@ -128,28 +150,21 @@ export default function ExpiredPage() {
                     <td className="lexp-ctn-cell">
                       <select
                         className="lexp-ctn-select"
-                        value={containerId}
-                        onChange={(e) => setEntry(product.id, e.target.value || null, gross, null)}
+                        value={selectVal}
+                        onChange={(e) => setEntryFromSelect(product.id, e.target.value, gross)}
                       >
                         <option value="">— none —</option>
                         {sortedContainers.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name} ({c.tare_g}g)</option>
+                          <>
+                            <option key={c.id} value={c.id}>{c.name} ({c.tare_g}g)</option>
+                            {(c.tare_variants ?? []).map((v, vi) => (
+                              <option key={`${c.id}::${vi}`} value={`${c.id}::${vi}`}>
+                                {c.name} · {v.label} ({v.tare_g}g)
+                              </option>
+                            ))}
+                          </>
                         ))}
                       </select>
-                      {hasVariants && (
-                        <select
-                          className="lexp-ctn-select lexp-variant-select"
-                          value={tareOverride ?? ""}
-                          onChange={(e) =>
-                            setEntry(product.id, containerId || null, gross, e.target.value === "" ? null : Number(e.target.value))
-                          }
-                        >
-                          <option value="">Base ({selectedContainer?.tare_g}g)</option>
-                          {selectedContainer!.tare_variants!.map((v, i) => (
-                            <option key={i} value={v.tare_g}>{v.label} ({v.tare_g}g)</option>
-                          ))}
-                        </select>
-                      )}
                     </td>
                     <td className="lexp-net-cell">
                       {net != null ? (

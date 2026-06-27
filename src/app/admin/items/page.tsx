@@ -281,7 +281,9 @@ export default function AdminItemsPage() {
                         ) : col.label}
                       </th>
                     ))}
-                    <th>Tabs</th>
+                    <th style={{ width: 50, textAlign: "center" }}>Back</th>
+                    <th style={{ width: 60, textAlign: "center" }}>Mat Exp</th>
+                    <th style={{ width: 60, textAlign: "center" }}>Closing</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -315,34 +317,28 @@ export default function AdminItemsPage() {
                           />
                         </td>
                       ))}
-                      <td>
-                        <div className="tab-checks">
-                          {STAGES.map((stage) => (
-                            <label key={stage.id} className="tab-check-label">
-                              <input
-                                type="checkbox"
-                                checked={item.appears_in.includes(stage.id)}
-                                onChange={() => {
-                                  const adding = !item.appears_in.includes(stage.id);
-                                  const appears_in = adding
-                                    ? [...item.appears_in, stage.id]
-                                    : item.appears_in.filter((s) => s !== stage.id);
-                                  const extra: Partial<typeof item> = {};
-                                  if (adding && stage.id === "expired" && item.loss_formula === "none") {
-                                    extra.loss_formula = "direct";
-                                    extra.loss_role = "input";
-                                  }
-                                  updateItem(item.id, { appears_in, ...extra });
-                                  if (adding && stage.id === "expired") {
-                                    setMatExpPrompt(item.id);
-                                  }
-                                }}
-                              />
-                              {stage.label}
-                            </label>
-                          ))}
-                        </div>
-                      </td>
+                      {STAGES.map((stage) => (
+                        <td key={stage.id} style={{ textAlign: "center", verticalAlign: "middle" }}>
+                          <input
+                            type="checkbox"
+                            checked={item.appears_in.includes(stage.id)}
+                            style={{ accentColor: "var(--accent)", width: 15, height: 15, cursor: "pointer" }}
+                            onChange={() => {
+                              const adding = !item.appears_in.includes(stage.id);
+                              const appears_in = adding
+                                ? [...item.appears_in, stage.id]
+                                : item.appears_in.filter((s) => s !== stage.id);
+                              const extra: Partial<typeof item> = {};
+                              if (adding && stage.id === "expired" && item.loss_formula === "none") {
+                                extra.loss_formula = "direct";
+                                extra.loss_role = "input";
+                              }
+                              updateItem(item.id, { appears_in, ...extra });
+                              if (adding && stage.id === "expired") setMatExpPrompt(item.id);
+                            }}
+                          />
+                        </td>
+                      ))}
                       <td>
                         <div className="row-actions">
                           {confirmingId === item.id ? (
