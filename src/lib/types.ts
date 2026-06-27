@@ -86,6 +86,10 @@ export interface Item {
   // Cream Charger style: closing loose measured in sleeves, converted via per_bag_pcs
   closing_input_type: "weight" | "count" | "sleeves";
 
+  // Whipping cream flavour presets — only set on the whipping_cream item.
+  // Each entry defines one selectable flavour in the closing canister calc.
+  wc_flavours: { id: string; name: string; pump_count: number; ml_per_pump: number }[] | null;
+
   notes: string | null;
 }
 
@@ -109,7 +113,7 @@ export interface Container {
 export interface WhippingCreamVariant {
   id: string;
   name: string;                  // "Vanilla", "Sakura", or custom
-  flavour: "vanilla" | "sakura";  // selects the pump/canister preset for this row
+  flavour: string;               // matches wc_flavours[].id on the item
   pump_count: number;            // preset, e.g. 4 (Vanilla), 10 (Sakura)
   ml_per_pump: number;           // preset, default 5
   empty_canister_weight: number; // preset tare weight (g) of this canister type

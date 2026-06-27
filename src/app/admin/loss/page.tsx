@@ -136,6 +136,7 @@ export default function AdminLossPage() {
       closing_box_row: true,
       loose_grid: false,
       closing_input_type: "count",
+      wc_flavours: null,
       notes: null,
     });
   }
