@@ -875,6 +875,17 @@ body {
 .app-dark .loss-move-btn:hover:not(:disabled) { background: #3a4460; color: var(--text-primary); }
 .app-dark .loss-move-btn:disabled { opacity: 0.25; cursor: default; }
 .app-dark .loss-material-cell { font-size: 13px; }
+.app-dark .loss-container-cell { font-size: 13px; white-space: nowrap; }
+.app-dark .loss-container-select {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 3px 6px;
+  height: 28px;
+  font-family: inherit;
+}
 .app-dark .loss-rate-cell { text-align: right; width: 90px; }
 .app-dark .loss-action-cell { text-align: center; white-space: nowrap; width: 52px; }
 .app-dark .loss-name-edit {
@@ -967,6 +978,7 @@ body {
   outline: none;
 }
 .app-dark .lexp-ctn-select:focus { border-color: var(--accent); }
+.app-dark .lexp-variant-select { margin-top: 4px; font-size: 11px; }
 .app-dark .lexp-rate-cell { font-size: 12px; font-family: monospace; color: var(--text-secondary); text-align: right; }
 .app-dark .lexp-result-cell { text-align: right; font-weight: 600; font-family: monospace; font-size: 13px; }
 
@@ -1094,6 +1106,85 @@ body {
 .app-dark .add-row-form button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* ===== Container variant sub-rows ===== */
+.app-dark .variant-row td {
+  background: color-mix(in srgb, var(--card-bg) 70%, var(--page-bg));
+  padding: 0 0 8px 0;
+}
+.app-dark .variant-block {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.app-dark .variant-header {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+.app-dark .variant-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.app-dark .variant-line input {
+  height: 30px;
+  padding: 0 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.app-dark .variant-line input.name-input { flex: 1; }
+.app-dark .variant-line input:not(.name-input) { width: 80px; }
+.app-dark .variant-line button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.app-dark .add-variant-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.app-dark .add-variant-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+
+/* ===== Admin Items — Tabs column ===== */
+.app-dark .tab-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 80px;
+}
+.app-dark .tab-check-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.app-dark .tab-check-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
 }
 
 .app-dark .checkbox-group {

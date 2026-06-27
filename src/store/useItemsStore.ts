@@ -58,6 +58,7 @@ interface ItemsState {
   addContainer: (container: Container) => void;
   updateContainer: (id: string, partial: Partial<Container>) => void;
   deleteContainer: (id: string) => void;
+  moveContainer: (id: string, direction: number) => void;
 
   setReorderMode: (on: boolean) => void;
   reseedLossItems: () => Promise<void>;
@@ -208,6 +209,16 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     secondGroup.forEach((item, i) =>
       get().updateItem(item.id, { closing_sort_order: merged[firstGroup.length + i] })
     );
+  },
+
+  moveContainer: (id, direction) => {
+    const sorted = [...get().containers].sort((a, b) => a.sort_order - b.sort_order);
+    const idx = sorted.findIndex((c) => c.id === id);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
+    const a = sorted[idx], b = sorted[swapIdx];
+    get().updateContainer(a.id, { sort_order: b.sort_order });
+    get().updateContainer(b.id, { sort_order: a.sort_order });
   },
 
   addContainer: (container) => {

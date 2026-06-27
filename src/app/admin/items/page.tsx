@@ -267,6 +267,7 @@ export default function AdminItemsPage() {
                         ) : col.label}
                       </th>
                     ))}
+                    <th>Tabs</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -300,6 +301,25 @@ export default function AdminItemsPage() {
                           />
                         </td>
                       ))}
+                      <td>
+                        <div className="tab-checks">
+                          {STAGES.map((stage) => (
+                            <label key={stage.id} className="tab-check-label">
+                              <input
+                                type="checkbox"
+                                checked={item.appears_in.includes(stage.id)}
+                                onChange={() => {
+                                  const appears_in = item.appears_in.includes(stage.id)
+                                    ? item.appears_in.filter((s) => s !== stage.id)
+                                    : [...item.appears_in, stage.id];
+                                  updateItem(item.id, { appears_in });
+                                }}
+                              />
+                              {stage.label}
+                            </label>
+                          ))}
+                        </div>
+                      </td>
                       <td>
                         <div className="row-actions">
                           {confirmingId === item.id ? (
