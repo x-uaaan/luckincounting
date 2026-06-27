@@ -17,13 +17,8 @@ function getLooseLabel(inputType: string, unit?: string | null): string {
   return "Loose (pcs)";
 }
 
-const FLAVOUR_PRESETS: Record<"vanilla" | "sakura", { name: string; pump_count: number; ml_per_pump: number }> = {
-  vanilla: { name: "Vanilla", pump_count: 4, ml_per_pump: 5 },
-  sakura: { name: "Sakura", pump_count: 10, ml_per_pump: 5 },
-};
-
 const MAX_CANISTERS = 5;
-const UNOPENED_STACK_SIZE = 4;
+const DEFAULT_STACK_SIZE = 4; // fallback if item.unopened_stack_size is null
 
 type ClosingPartial = Pick<
   ClosingEntry,
@@ -124,9 +119,15 @@ export default function ClosingPage() {
             ? "Bag"
             : "Ctn";
 
+        const wcFlavours = item.wc_flavours ?? [
+          { id: "vanilla", name: "Vanilla", pump_count: 4, ml_per_pump: 5 },
+          { id: "sakura",  name: "Sakura",  pump_count: 10, ml_per_pump: 5 },
+        ];
+        const defaultFlavour = wcFlavours[0];
+        const stackSize = item.unopened_stack_size ?? DEFAULT_STACK_SIZE;
         const whippingCream = base.whipping_cream ?? {
           variants: [
-            { id: "canister_1", ...FLAVOUR_PRESETS.vanilla, flavour: "vanilla" as const, empty_canister_weight: canisterTare, total_weight: null },
+            { id: "canister_1", name: defaultFlavour.name, flavour: defaultFlavour.id, pump_count: defaultFlavour.pump_count, ml_per_pump: defaultFlavour.ml_per_pump, empty_canister_weight: canisterTare, total_weight: null },
           ],
           total_whipping_cream: null,
         };
@@ -306,7 +307,7 @@ export default function ClosingPage() {
               })()}
 
               {item.closing_inventory_formula === "whipping_cream" && (() => {
-                const unopenedCount = (base.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (base.unopened_loose_pcs ?? 0);
+                const unopenedCount = (base.unopened_stacks ?? 0) * stackSize + (base.unopened_loose_pcs ?? 0);
                 const openedBoxes = base.gross_weight != null ? base.gross_weight / (item.bag_size_g ?? 1000) : null;
                 const canisterBoxes = totalCream != null ? totalCream / (item.bag_size_g ?? 1000) : null;
                 return (
@@ -326,7 +327,7 @@ export default function ClosingPage() {
                     <div className="op">×</div>
                     <div className="field w44">
                       <div className="lbl">/stack</div>
-                      <div className="const">{UNOPENED_STACK_SIZE}</div>
+                      <div className="const">{stackSize}</div>
                     </div>
                     <div className="op">+</div>
                     <div className="field w44">
@@ -380,16 +381,17 @@ export default function ClosingPage() {
                             <select
                               value={v.flavour}
                               onChange={(e) => {
-                                const flavour = e.target.value as "vanilla" | "sakura";
-                                const preset = FLAVOUR_PRESETS[flavour];
+                                const flavourId = e.target.value;
+                                const preset = wcFlavours.find(f => f.id === flavourId) ?? wcFlavours[0];
                                 const variants = whippingCream.variants.map((vv, i) =>
-                                  i === idx ? { ...vv, flavour, ...preset, empty_canister_weight: canisterTare } : vv
+                                  i === idx ? { ...vv, flavour: flavourId, name: preset.name, pump_count: preset.pump_count, ml_per_pump: preset.ml_per_pump, empty_canister_weight: canisterTare } : vv
                                 );
                                 update({ whipping_cream: { variants, total_whipping_cream: null } });
                               }}
                             >
-                              <option value="vanilla">Vanilla (20)</option>
-                              <option value="sakura">Sakura (50)</option>
+                              {wcFlavours.map(f => (
+                                <option key={f.id} value={f.id}>{f.name} ({f.pump_count * f.ml_per_pump}g)</option>
+                              ))}
                             </select>
                           </div>
                           <div className="field w70">
@@ -436,7 +438,7 @@ export default function ClosingPage() {
                       const n = whippingCream.variants.length + 1;
                       const variants = [
                         ...whippingCream.variants,
-                        { id: `canister_${n}`, ...FLAVOUR_PRESETS.vanilla, flavour: "vanilla" as const, empty_canister_weight: canisterTare, total_weight: null },
+                        { id: `canister_${n}`, name: defaultFlavour.name, flavour: defaultFlavour.id, pump_count: defaultFlavour.pump_count, ml_per_pump: defaultFlavour.ml_per_pump, empty_canister_weight: canisterTare, total_weight: null },
                       ];
                       update({ whipping_cream: { variants, total_whipping_cream: null } });
                     }}

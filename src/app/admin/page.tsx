@@ -4,9 +4,10 @@ import Link from "next/link";
 import AdminHeader from "@/components/AdminHeader";
 
 const SECTIONS = [
-  { href: "/admin/items", label: "Items", desc: "Manage items, weights, and calc factors" },
+  { href: "/admin/items", label: "Items", desc: "Manage items, weights, and which tabs they appear in" },
+  { href: "/admin/calc-type", label: "Calc Type", desc: "Configure calc formulas, stack sizes, whipping cream flavours" },
   { href: "/admin/loss", label: "Loss", desc: "Loss-rate fractions for Material Expired items" },
-  { href: "/admin/containers", label: "Containers", desc: "Manage container name/tare presets" },
+  { href: "/admin/containers", label: "Containers", desc: "Manage container name/tare presets and order" },
   { href: "/admin/records", label: "Records", desc: "View, approve, or reject daily submissions" },
   { href: "/admin/activity", label: "Activity", desc: "Log of all adds, deletes, and approvals" },
   { href: "/admin/settings", label: "Settings", desc: "Google Drive connection and folder" },

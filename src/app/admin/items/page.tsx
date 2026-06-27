@@ -151,6 +151,7 @@ export default function AdminItemsPage() {
   }
 
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [matExpPrompt, setMatExpPrompt] = useState<string | null>(null);
   const [newItemDrafts, setNewItemDrafts] = useState<
     Record<string, { name: string; unit: string; appears_in: Stage[] }>
   >({});
@@ -213,6 +214,7 @@ export default function AdminItemsPage() {
       closing_box_row: true,
       loose_grid: false,
       closing_input_type: "count",
+      wc_flavours: null,
       notes: null,
     };
 
@@ -227,6 +229,18 @@ export default function AdminItemsPage() {
         Edits to weights and calc factors flow through to the counting sheet immediately.
         New items are always added to the Final (Sheet2) sheet.
       </p>
+      {matExpPrompt && (() => {
+        const promptItem = items.find(i => i.id === matExpPrompt);
+        return (
+          <div className="mat-exp-prompt">
+            <span>
+              <strong>{promptItem?.name}</strong> added to Mat Exp with <em>direct</em> formula.
+              Go to <a href="/admin/loss">Admin → Loss</a> to set its loss rate/material.
+            </span>
+            <button onClick={() => setMatExpPrompt(null)}>✕</button>
+          </div>
+        );
+      })()}
 
 
       {categories.map((category, catIdx) => {
@@ -309,10 +323,19 @@ export default function AdminItemsPage() {
                                 type="checkbox"
                                 checked={item.appears_in.includes(stage.id)}
                                 onChange={() => {
-                                  const appears_in = item.appears_in.includes(stage.id)
-                                    ? item.appears_in.filter((s) => s !== stage.id)
-                                    : [...item.appears_in, stage.id];
-                                  updateItem(item.id, { appears_in });
+                                  const adding = !item.appears_in.includes(stage.id);
+                                  const appears_in = adding
+                                    ? [...item.appears_in, stage.id]
+                                    : item.appears_in.filter((s) => s !== stage.id);
+                                  const extra: Partial<typeof item> = {};
+                                  if (adding && stage.id === "expired" && item.loss_formula === "none") {
+                                    extra.loss_formula = "direct";
+                                    extra.loss_role = "input";
+                                  }
+                                  updateItem(item.id, { appears_in, ...extra });
+                                  if (adding && stage.id === "expired") {
+                                    setMatExpPrompt(item.id);
+                                  }
                                 }}
                               />
                               {stage.label}

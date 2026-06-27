@@ -32,6 +32,7 @@ const base: Omit<Item, "id" | "name" | "category" | "sort_order" | "appears_in">
   closing_box_row: true,
   loose_grid: false,
   closing_input_type: "count",
+  wc_flavours: null,
   notes: null,
 };
 
@@ -854,6 +855,10 @@ export const seedItems: Item[] = [
     bag_size_g: 1000,
     closing_inventory_formula: "whipping_cream",
     closing_input_type: "weight",
+    wc_flavours: [
+      { id: "vanilla", name: "Vanilla", pump_count: 4, ml_per_pump: 5 },
+      { id: "sakura",  name: "Sakura",  pump_count: 10, ml_per_pump: 5 },
+    ],
     notes:
       "loose = non_coffee(unopened pcs) * 1000 + canister(from Closing whipping-cream calc), countingflow.md §A.7",
   },

@@ -139,7 +139,7 @@ export function calcWhippingCream(calc: WhippingCreamCalc): WhippingCreamCalc {
 }
 
 // --- Stage 4: Closing (countingflow.md §A.1/§A.3/§A.7) ---
-const UNOPENED_STACK_SIZE = 4;
+const DEFAULT_WC_STACK_SIZE = 4; // fallback when item.unopened_stack_size is null
 
 export function calcClosing(
   item: Item,
@@ -205,7 +205,7 @@ export function calcClosing(
     loose = invBagSize - (entry.under_cabinet ?? 0);
   } else if (item.closing_inventory_formula === "whipping_cream" && invBagSize != null) {
     // Unopened boxes come in stacks of 4; loose_pcs is the remainder.
-    const totalPcs = (entry.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (entry.unopened_loose_pcs ?? 0);
+    const totalPcs = (entry.unopened_stacks ?? 0) * (item.unopened_stack_size ?? DEFAULT_WC_STACK_SIZE) + (entry.unopened_loose_pcs ?? 0);
     non_coffee = totalPcs;
     // total g = unopened boxes*1000 + opened box gross weight + cream in canisters
     // loose_sum = loose / 1000 = boxes (since closing_input_type="weight", bag_size_g=1000)
