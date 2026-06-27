@@ -53,6 +53,7 @@ interface ItemsState {
   purgeDeletedItem: (id: string) => void;
 
   moveItem: (id: string, direction: number, sortField: "sort_order" | "closing_sort_order" | "front_sort_order" | "final_sort_order") => void;
+  moveClosingCategory: (category: string, direction: number) => void;
 
   addContainer: (container: Container) => void;
   updateContainer: (id: string, partial: Partial<Container>) => void;
@@ -177,6 +178,36 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     // Swap the sort values
     get().updateItem(id, { [sortField]: otherVal } as Partial<Item>);
     get().updateItem(other.id, { [sortField]: myVal } as Partial<Item>);
+  },
+
+  moveClosingCategory: (category, direction) => {
+    const allItems = get().items;
+    const closingItems = allItems
+      .filter((i) => i.appears_in.includes("closing"))
+      .sort((a, b) => (a.closing_sort_order ?? a.sort_order) - (b.closing_sort_order ?? b.sort_order));
+
+    const cats = [...new Set(closingItems.map((i) => i.category))];
+    const catIdx = cats.indexOf(category);
+    const swapIdx = catIdx + direction;
+    if (catIdx < 0 || swapIdx < 0 || swapIdx >= cats.length) return;
+
+    const swapCat = cats[swapIdx];
+    const catItems = closingItems.filter((i) => i.category === category);
+    const swapItems = closingItems.filter((i) => i.category === swapCat);
+
+    const merged = [
+      ...catItems.map((i) => i.closing_sort_order ?? i.sort_order),
+      ...swapItems.map((i) => i.closing_sort_order ?? i.sort_order),
+    ].sort((a, b) => a - b);
+
+    // direction < 0 = move up: catItems take the earlier slots
+    // direction > 0 = move down: swapItems take the earlier slots
+    const [firstGroup, secondGroup] =
+      direction < 0 ? [catItems, swapItems] : [swapItems, catItems];
+    firstGroup.forEach((item, i) => get().updateItem(item.id, { closing_sort_order: merged[i] }));
+    secondGroup.forEach((item, i) =>
+      get().updateItem(item.id, { closing_sort_order: merged[firstGroup.length + i] })
+    );
   },
 
   addContainer: (container) => {
