@@ -205,8 +205,8 @@ export function calcClosing(
     // Unopened boxes come in stacks of 4; loose_pcs is the remainder.
     const totalPcs = (entry.unopened_stacks ?? 0) * UNOPENED_STACK_SIZE + (entry.unopened_loose_pcs ?? 0);
     non_coffee = totalPcs;
-    // unopened stock (in boxes) converted to g, plus cream still in canisters
-    loose = non_coffee * (item.bag_size_g ?? 0) + (whippingCream?.total_whipping_cream ?? 0);
+    // unopened + extra loose boxes (in g), plus cream still in canisters
+    loose = (non_coffee + (entry.loose_extra ?? 0)) * (item.bag_size_g ?? 0) + (whippingCream?.total_whipping_cream ?? 0);
   } else if (item.closing_inventory_formula === "stack_box") {
     // (§A.10) Raw Material: stacked boxes + loose remainder pcs = whole-box count,
     // plus any partial loose weight (g) converted via bag_size_g.

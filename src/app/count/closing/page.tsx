@@ -387,6 +387,24 @@ export default function ClosingPage() {
                     );
                   })}
 
+                  <div className="row">
+                    <div className="w105">
+                      <div className="name">Loose</div>
+                    </div>
+                    <div className="field w70">
+                      <div className="lbl">Loose (box)</div>
+                      <NumericInput
+                        value={base.loose_extra ?? null}
+                        onChange={(v) => update({ loose_extra: v })}
+                      />
+                    </div>
+                    <div className="op">=</div>
+                    <div className="field w70">
+                      <div className="lbl">box</div>
+                      <input className="auto" disabled value={base.loose_extra ?? ""} />
+                    </div>
+                  </div>
+
                   <button
                     className="add-btn"
                     disabled={whippingCream.variants.length >= MAX_CANISTERS}
